@@ -146,9 +146,33 @@ public class SequenceParserTests
 
 		diagram.Messages.Should().HaveCount(2);
 		diagram.Activations.Should().Equal(
-			new SequenceActivation("A", true, -1),
-			new SequenceActivation("B", true, 0),
-			new SequenceActivation("B", false, 1));
+			new SequenceActivation("A", true, -1, 1),
+			new SequenceActivation("B", true, 0, 3),
+			new SequenceActivation("B", false, 1, 5));
+	}
+
+	[Test]
+	public void Statement_order_tells_apart_steps_between_the_same_messages()
+	{
+		var lines = new[]
+		{
+			"sequenceDiagram",
+			"loop Every minute",
+			"Note over A: inside",
+			"A->>B: Ping",
+			"Note over A: still inside",
+			"end",
+			"Note over A: after",
+		};
+
+		var diagram = SequenceParser.Parse(lines);
+
+		var block = diagram.Blocks.Single();
+		diagram.Messages[0].Order.Should().Be(3);
+		diagram.Notes.Select(n => n.AfterIndex).Should().Equal(-1, 0, 0);
+		diagram.Notes.Select(n => n.Order).Should().Equal(2, 4, 6);
+		block.StartOrder.Should().Be(1);
+		block.EndOrder.Should().Be(5);
 	}
 
 	[Test]

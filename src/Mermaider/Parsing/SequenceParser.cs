@@ -62,7 +62,7 @@ internal static partial class SequenceParser
 		var blocks = new List<SequenceBlock>();
 		var notes = new List<SequenceNote>();
 		var actorIds = new HashSet<string>();
-		var blockStack = new Stack<(SequenceBlockType Type, string Label, int StartIndex, List<SequenceBlockDivider> Dividers)>();
+		var blockStack = new Stack<(SequenceBlockType Type, string Label, int StartIndex, int StartOrder, List<SequenceBlockDivider> Dividers)>();
 		var boxes = new List<SequenceBox>();
 		var boxStack = new Stack<(string? Color, string Title, List<string> ActorIds)>();
 		var autoNumber = -1;
@@ -120,7 +120,7 @@ internal static partial class SequenceParser
 			{
 				var id = activationMatch.Groups[2].Value;
 				EnsureActor(actors, actorIds, id);
-				activations.Add(new SequenceActivation(id, activationMatch.Groups[1].Value == "activate", messages.Count - 1));
+				activations.Add(new SequenceActivation(id, activationMatch.Groups[1].Value == "activate", messages.Count - 1, i));
 				continue;
 			}
 
@@ -156,7 +156,7 @@ internal static partial class SequenceParser
 					_ => SequenceNotePosition.Over,
 				};
 
-				notes.Add(new SequenceNote(noteActorIds, text, position, messages.Count - 1));
+				notes.Add(new SequenceNote(noteActorIds, text, position, messages.Count - 1, i));
 				continue;
 			}
 
@@ -166,7 +166,7 @@ internal static partial class SequenceParser
 				var blockType = Enum.Parse<SequenceBlockType>(blockMatch.Groups[1].Value, ignoreCase: true);
 				var rawLabel = blockMatch.Groups[2].Success ? blockMatch.Groups[2].Value.Trim() : "";
 				var label = rawLabel.Length > 0 ? LabelNormalizer.NormalizeBrTags(rawLabel) : "";
-				blockStack.Push((blockType, label, messages.Count, []));
+				blockStack.Push((blockType, label, messages.Count, i, []));
 				continue;
 			}
 
@@ -176,7 +176,7 @@ internal static partial class SequenceParser
 				var rawLabel = dividerMatch.Groups[2].Success ? dividerMatch.Groups[2].Value.Trim() : "";
 				var label = rawLabel.Length > 0 ? LabelNormalizer.NormalizeBrTags(rawLabel) : "";
 				var current = blockStack.Peek();
-				current.Dividers.Add(new SequenceBlockDivider(messages.Count, label));
+				current.Dividers.Add(new SequenceBlockDivider(messages.Count, label, i));
 				continue;
 			}
 
@@ -190,6 +190,8 @@ internal static partial class SequenceParser
 					StartIndex = completed.StartIndex,
 					EndIndex = Math.Max(messages.Count - 1, completed.StartIndex),
 					Dividers = completed.Dividers,
+					StartOrder = completed.StartOrder,
+					EndOrder = i,
 				});
 				continue;
 			}
@@ -220,7 +222,7 @@ internal static partial class SequenceParser
 					autoNumber += autoStep;
 				}
 
-				messages.Add(new SequenceMessage(from, to, label, lineStyle, SequenceArrowHead.Filled, Bidirectional: true));
+				messages.Add(new SequenceMessage(from, to, label, lineStyle, SequenceArrowHead.Filled, Bidirectional: true, Order: i));
 
 				if (pendingCreate != null)
 				{
@@ -263,7 +265,8 @@ internal static partial class SequenceParser
 				messages.Add(new SequenceMessage(
 					from, to, label, lineStyle, arrowHead,
 					Activate: activationMark == "+",
-					Deactivate: activationMark == "-"));
+					Deactivate: activationMark == "-",
+					Order: i));
 
 				if (pendingCreate != null)
 				{
