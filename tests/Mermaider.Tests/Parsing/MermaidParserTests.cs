@@ -22,6 +22,32 @@ public class MermaidParserTests
 	}
 
 	[Test]
+	public void Front_matter_with_a_nested_config_map_is_stripped_and_exposed()
+	{
+		var diagram = MermaidParser.Parse("""
+			---
+			title: Releases
+			config:
+			  logLevel: 'debug'
+			  theme: 'base'
+			  gitGraph:
+			    showBranches: false
+			    mainBranchName: "trunk"
+			---
+			      gitGraph
+			        commit
+			        branch hotfix
+			""");
+
+		diagram.Type.Should().Be(DiagramType.GitGraph);
+		diagram.Metadata.Title.Should().Be("Releases");
+		diagram.Metadata.Config.Should().NotBeNull();
+		diagram.Metadata.Config!["theme"].Should().Be("base");
+		diagram.Metadata.Config["gitGraph.showBranches"].Should().Be("false");
+		diagram.Metadata.Config["gitGraph.mainBranchName"].Should().Be("trunk");
+	}
+
+	[Test]
 	public void Parses_state_to_graph()
 	{
 		var diagram = MermaidParser.Parse("stateDiagram-v2\n  [*] --> Idle\n  Idle --> Busy");
