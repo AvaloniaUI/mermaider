@@ -277,9 +277,9 @@ internal static partial class ClassParser
 			var parms = methodMatch.Groups[2].Success && methodMatch.Groups[2].Value.Trim().Length > 0
 				? methodMatch.Groups[2].Value.Trim()
 				: null;
-			var type = methodMatch.Groups[3].Success && methodMatch.Groups[3].Value.Trim().Length > 0
-				? methodMatch.Groups[3].Value.Trim()
-				: null;
+			// The classifier after the parentheses (someMethod()$ int, someMethod()* int) marks the member, not its type.
+			var typeText = methodMatch.Groups[3].Success ? methodMatch.Groups[3].Value.Trim().TrimStart('$', '*').Trim() : string.Empty;
+			var type = typeText.Length > 0 ? typeText : null;
 			var isStatic = name.EndsWith('$') || rest.Contains('$');
 			var isAbstract = name.EndsWith('*') || rest.Contains('*');
 

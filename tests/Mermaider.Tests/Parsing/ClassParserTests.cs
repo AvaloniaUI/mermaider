@@ -138,6 +138,18 @@ public class ClassParserTests
 	}
 
 	[Test]
+	public void Method_classifier_marks_the_member_and_stays_out_of_its_type()
+	{
+		var diagram = ClassParser.Parse(["classDiagram", "class Shape {", "+area()$ double", "+draw()*", "}"]);
+		var methods = diagram.Classes.Single(c => c.Id == "Shape").Methods;
+
+		methods[0].IsStatic.Should().BeTrue();
+		methods[0].Type.Should().Be("double");
+		methods[1].IsAbstract.Should().BeTrue();
+		methods[1].Type.Should().BeNull();
+	}
+
+	[Test]
 	public void Parses_plain_links_without_markers()
 	{
 		var diagram = ClassParser.Parse(["classDiagram", "A -- B", "C .. D : uses"]);
