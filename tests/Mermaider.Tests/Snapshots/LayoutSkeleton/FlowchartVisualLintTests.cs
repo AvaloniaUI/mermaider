@@ -28,7 +28,7 @@ public class FlowchartVisualLintTests
 	{
 		var example = DiagramExamples.All.Single(e => e.Slug == slug);
 		var (cleaned, _) = DiagramPreprocessor.Process(example.Source);
-		var lines = MermaidRenderer.PreprocessLines(cleaned);
+		var lines = DiagramPreprocessor.PreprocessLines(cleaned);
 		var graph = example.Source.TrimStart().StartsWith("stateDiagram", StringComparison.Ordinal)
 			? StateParser.Parse(lines)
 			: FlowchartParser.Parse(lines);

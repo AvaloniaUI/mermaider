@@ -1,6 +1,5 @@
 using System.Text.RegularExpressions;
 using Mermaider.Models;
-using Mermaider.Text;
 
 namespace Mermaider.Parsing;
 
@@ -139,7 +138,7 @@ internal static partial class ErParser
 
 		var commentMatch = CommentPattern().Match(rest);
 		if (commentMatch.Success)
-			comment = MultilineUtils.NormalizeBrTags(commentMatch.Groups[1].Value);
+			comment = LabelNormalizer.NormalizeBrTags(commentMatch.Groups[1].Value);
 
 		var restWithoutComment = CommentPattern().Replace(rest, "").Trim();
 		foreach (var part in restWithoutComment.Split(' ', StringSplitOptions.RemoveEmptyEntries))
@@ -166,7 +165,7 @@ internal static partial class ErParser
 		var cardinalityStr = match.Groups[2].Value;
 		var entity2 = match.Groups[3].Value;
 		var rawLabel = match.Groups[4].Success ? match.Groups[4].Value.Trim().Trim('"', '\'') : "";
-		var label = rawLabel.Length > 0 ? MultilineUtils.NormalizeBrTags(rawLabel) : "";
+		var label = rawLabel.Length > 0 ? LabelNormalizer.NormalizeBrTags(rawLabel) : "";
 
 		var lineMatch = CardinalitySplitPattern().Match(cardinalityStr);
 		if (!lineMatch.Success)

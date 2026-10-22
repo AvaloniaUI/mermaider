@@ -39,7 +39,7 @@ internal static partial class MermaidJsFlowchartSkeletonExtractor
 	public static LayoutSkeleton Extract(string svg, string diagramSource)
 	{
 		var (cleaned, _) = DiagramPreprocessor.Process(diagramSource);
-		var lines = MermaidRenderer.PreprocessLines(cleaned);
+		var lines = DiagramPreprocessor.PreprocessLines(cleaned);
 		var graph = FlowchartParser.Parse(lines);
 
 		var boxes = ExtractNodeBoxes(svg).Where(b => graph.Nodes.ContainsKey(b.Id)).ToList();

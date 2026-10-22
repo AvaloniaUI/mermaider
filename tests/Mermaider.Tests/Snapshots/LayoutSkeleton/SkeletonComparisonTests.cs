@@ -141,7 +141,7 @@ public class SkeletonComparisonTests
 	private static LayoutSkeleton BuildMermaiderSkeleton(DiagramExample example)
 	{
 		var (cleaned, _) = DiagramPreprocessor.Process(example.Source);
-		var lines = MermaidRenderer.PreprocessLines(cleaned);
+		var lines = DiagramPreprocessor.PreprocessLines(cleaned);
 		var positioned = LightweightErLayoutEngine.Layout(ErParser.Parse(lines));
 		return MermaiderSkeletonExtractor.Extract(positioned);
 	}

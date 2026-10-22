@@ -19,7 +19,7 @@ public class StateLayoutSkeletonTests
 	private static MermaidGraph ParseState(string source)
 	{
 		var (cleaned, _) = DiagramPreprocessor.Process(source);
-		var lines = MermaidRenderer.PreprocessLines(cleaned);
+		var lines = DiagramPreprocessor.PreprocessLines(cleaned);
 		return StateParser.Parse(lines);
 	}
 

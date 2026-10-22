@@ -6,7 +6,8 @@ namespace Mermaider.Parsing;
 
 /// <summary>
 /// Strips YAML frontmatter and <c>%%{init:...}%%</c> directives from raw Mermaid input,
-/// returning the cleaned text and any extracted <see cref="DiagramMetadata"/>.
+/// returning the cleaned text and any extracted <see cref="DiagramMetadata"/>, and splits
+/// the cleaned text into the lines the diagram parsers consume.
 /// </summary>
 internal static partial class DiagramPreprocessor
 {
@@ -53,6 +54,68 @@ internal static partial class DiagramPreprocessor
 			: new DiagramMetadata { Title = title, Theme = theme, ThemeVariables = themeVariables };
 
 		return (cleaned, metadata);
+	}
+
+	/// <summary>
+	/// Split cleaned text into trimmed lines, dropping blank lines and <c>%%</c> comments.
+	/// </summary>
+	internal static string[] PreprocessLines(string text)
+	{
+		var rawLines = text.Split('\n');
+		var count = 0;
+		for (var i = 0; i < rawLines.Length; i++)
+		{
+			var trimmed = rawLines[i].Trim();
+			if (trimmed.Length > 0 && !trimmed.StartsWith("%%", StringComparison.Ordinal))
+			{
+				rawLines[count] = trimmed;
+				count++;
+			}
+		}
+		return rawLines.AsSpan(0, count).ToArray();
+	}
+
+	/// <summary>
+	/// Split cleaned text into lines that keep their leading indentation, for the diagram types whose
+	/// structure is expressed by indentation. Blank lines and <c>%%</c> comments are dropped, and so are
+	/// <c>accTitle</c>/<c>accDescr</c> lines when <paramref name="accessibility"/> has already captured them.
+	/// </summary>
+	internal static string[] PreprocessLinesPreserveIndent(string text, AccessibilityInfo? accessibility = null)
+	{
+		var rawLines = text.Split('\n');
+		var result = new List<string>(rawLines.Length);
+		for (var i = 0; i < rawLines.Length; i++)
+		{
+			var trimmed = rawLines[i].TrimEnd();
+			var stripped = trimmed.Trim();
+			if (stripped.Length == 0 || stripped.StartsWith("%%", StringComparison.Ordinal))
+				continue;
+			if (accessibility?.HasContent == true && IsAccessibilityLine(stripped, ref i, rawLines))
+				continue;
+			result.Add(trimmed);
+		}
+		return result.ToArray();
+	}
+
+	private static bool IsAccessibilityLine(string stripped, ref int i, string[] rawLines)
+	{
+		if (stripped.StartsWith("accTitle", StringComparison.Ordinal) && stripped.Contains(':'))
+			return true;
+		if (stripped.StartsWith("accDescr", StringComparison.Ordinal) && stripped.Contains(':'))
+			return true;
+		if (stripped.StartsWith("accDescr", StringComparison.Ordinal) && stripped.Contains('{'))
+		{
+			i++;
+			while (i < rawLines.Length)
+			{
+				var inner = rawLines[i].Trim();
+				if (inner == "}" || inner.StartsWith('}'))
+					break;
+				i++;
+			}
+			return true;
+		}
+		return false;
 	}
 
 	private static (string CleanedText, string? Title) StripFrontmatter(string text)

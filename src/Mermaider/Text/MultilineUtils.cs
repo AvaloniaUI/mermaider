@@ -13,45 +13,11 @@ internal static partial class MultilineUtils
 
 	private static readonly SearchValues<char> XmlSpecialCharacters = SearchValues.Create("&<>\"'");
 
-	[GeneratedRegex(@"<br\s*/?>", RegexOptions.IgnoreCase, TimeoutMs)]
-	private static partial Regex BrTagPattern();
-
-	[GeneratedRegex(@"\\n", RegexOptions.None, TimeoutMs)]
-	private static partial Regex EscapedNewlinePattern();
-
-	[GeneratedRegex(@"</?(?:sub|sup|small|mark)\s*>", RegexOptions.IgnoreCase, TimeoutMs)]
-	private static partial Regex UnsupportedTagPattern();
-
-	[GeneratedRegex(@"\*\*(.+?)\*\*", RegexOptions.None, TimeoutMs)]
-	private static partial Regex MarkdownBoldPattern();
-
-	[GeneratedRegex(@"(?<!\*)\*([^\s*](?:[^*]*[^\s*])?)\*(?!\*)", RegexOptions.None, TimeoutMs)]
-	private static partial Regex MarkdownItalicPattern();
-
-	[GeneratedRegex(@"~~(.+?)~~", RegexOptions.None, TimeoutMs)]
-	private static partial Regex MarkdownStrikethroughPattern();
-
 	[GeneratedRegex(@"<(/?)(b|strong|i|em|u|s|del)\s*>", RegexOptions.IgnoreCase, TimeoutMs)]
 	private static partial Regex FormatTagPattern();
 
 	[GeneratedRegex(@"</?(?:b|strong|i|em|u|s|del)\s*>", RegexOptions.IgnoreCase, TimeoutMs)]
 	private static partial Regex HasFormatTagPattern();
-
-	/// <summary>
-	/// Normalize label text: strip quotes, convert &lt;br&gt; tags and \n to newlines,
-	/// strip unsupported tags, convert markdown formatting to HTML tags.
-	/// </summary>
-	internal static string NormalizeBrTags(string label)
-	{
-		var unquoted = label is ['"', .., '"'] ? label[1..^1] : label;
-		var result = BrTagPattern().Replace(unquoted, "\n");
-		result = EscapedNewlinePattern().Replace(result, "\n");
-		result = UnsupportedTagPattern().Replace(result, "");
-		result = MarkdownBoldPattern().Replace(result, "<b>$1</b>");
-		result = MarkdownItalicPattern().Replace(result, "<i>$1</i>");
-		result = MarkdownStrikethroughPattern().Replace(result, "<s>$1</s>");
-		return result;
-	}
 
 	internal static void AppendEscapedXml(StringBuilder sb, ReadOnlySpan<char> value)
 	{

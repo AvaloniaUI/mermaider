@@ -1,7 +1,6 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
 using Mermaider.Models;
-using Mermaider.Text;
 
 namespace Mermaider.Parsing;
 
@@ -98,7 +97,7 @@ internal static partial class SequenceParser
 				var type = createMatch.Groups[1].Value == "actor" ? SequenceActorType.Actor : SequenceActorType.Participant;
 				var id = createMatch.Groups[2].Value;
 				var rawLabel = createMatch.Groups[3].Success ? createMatch.Groups[3].Value.Trim() : id;
-				var label = MultilineUtils.NormalizeBrTags(rawLabel);
+				var label = LabelNormalizer.NormalizeBrTags(rawLabel);
 				if (actorIds.Add(id))
 					actors.Add(new SequenceActor(id, label, type));
 				pendingCreate = id;
@@ -118,7 +117,7 @@ internal static partial class SequenceParser
 				var type = actorMatch.Groups[1].Value == "actor" ? SequenceActorType.Actor : SequenceActorType.Participant;
 				var id = actorMatch.Groups[2].Value;
 				var rawLabel = actorMatch.Groups[3].Success ? actorMatch.Groups[3].Value.Trim() : id;
-				var label = MultilineUtils.NormalizeBrTags(rawLabel);
+				var label = LabelNormalizer.NormalizeBrTags(rawLabel);
 				if (actorIds.Add(id))
 					actors.Add(new SequenceActor(id, label, type));
 				if (boxStack.Count > 0)
@@ -131,7 +130,7 @@ internal static partial class SequenceParser
 			{
 				var posStr = noteMatch.Groups[1].Value.ToLowerInvariant();
 				var actorsStr = noteMatch.Groups[2].Value.Trim();
-				var text = MultilineUtils.NormalizeBrTags(noteMatch.Groups[3].Value.Trim());
+				var text = LabelNormalizer.NormalizeBrTags(noteMatch.Groups[3].Value.Trim());
 				var noteActorIds = actorsStr.Split(',', StringSplitOptions.TrimEntries);
 
 				foreach (var aid in noteActorIds)
@@ -153,7 +152,7 @@ internal static partial class SequenceParser
 			{
 				var blockType = Enum.Parse<SequenceBlockType>(blockMatch.Groups[1].Value, ignoreCase: true);
 				var rawLabel = blockMatch.Groups[2].Success ? blockMatch.Groups[2].Value.Trim() : "";
-				var label = rawLabel.Length > 0 ? MultilineUtils.NormalizeBrTags(rawLabel) : "";
+				var label = rawLabel.Length > 0 ? LabelNormalizer.NormalizeBrTags(rawLabel) : "";
 				blockStack.Push((blockType, label, messages.Count, []));
 				continue;
 			}
@@ -162,7 +161,7 @@ internal static partial class SequenceParser
 			if (dividerMatch.Success && blockStack.Count > 0)
 			{
 				var rawLabel = dividerMatch.Groups[2].Success ? dividerMatch.Groups[2].Value.Trim() : "";
-				var label = rawLabel.Length > 0 ? MultilineUtils.NormalizeBrTags(rawLabel) : "";
+				var label = rawLabel.Length > 0 ? LabelNormalizer.NormalizeBrTags(rawLabel) : "";
 				var current = blockStack.Peek();
 				current.Dividers.Add(new SequenceBlockDivider(messages.Count, label));
 				continue;
@@ -195,7 +194,7 @@ internal static partial class SequenceParser
 				var from = biMatch.Groups[1].Value;
 				var arrow = biMatch.Groups[2].Value;
 				var to = biMatch.Groups[3].Value;
-				var label = MultilineUtils.NormalizeBrTags(biMatch.Groups[4].Value.Trim());
+				var label = LabelNormalizer.NormalizeBrTags(biMatch.Groups[4].Value.Trim());
 
 				EnsureActor(actors, actorIds, from);
 				EnsureActor(actors, actorIds, to);
@@ -231,7 +230,7 @@ internal static partial class SequenceParser
 				var arrow = msgMatch.Groups[2].Value;
 				var activationMark = msgMatch.Groups[3].Value;
 				var to = msgMatch.Groups[4].Value;
-				var label = MultilineUtils.NormalizeBrTags(msgMatch.Groups[5].Value.Trim());
+				var label = LabelNormalizer.NormalizeBrTags(msgMatch.Groups[5].Value.Trim());
 
 				if (autoNumber >= 0)
 				{

@@ -37,7 +37,7 @@ internal static partial class MermaidJsStateSkeletonExtractor
 	public static LayoutSkeleton Extract(string svg, string diagramSource)
 	{
 		var (cleaned, _) = DiagramPreprocessor.Process(diagramSource);
-		var lines = MermaidRenderer.PreprocessLines(cleaned);
+		var lines = DiagramPreprocessor.PreprocessLines(cleaned);
 		var graph = StateParser.Parse(lines);
 
 		var realNodeIds = graph.Nodes

@@ -1,6 +1,5 @@
 using System.Text.RegularExpressions;
 using Mermaider.Models;
-using Mermaider.Text;
 
 namespace Mermaider.Parsing;
 
@@ -56,7 +55,7 @@ internal static partial class ArchitectureParser
 				{
 					Id = groupMatch.Groups[1].Value,
 					Icon = groupMatch.Groups[2].Success ? groupMatch.Groups[2].Value : null,
-					Title = MultilineUtils.NormalizeBrTags(groupMatch.Groups[3].Value),
+					Title = LabelNormalizer.NormalizeBrTags(groupMatch.Groups[3].Value),
 					ParentId = groupMatch.Groups[4].Success ? groupMatch.Groups[4].Value : null,
 				});
 				continue;
@@ -69,7 +68,7 @@ internal static partial class ArchitectureParser
 				{
 					Id = serviceMatch.Groups[1].Value,
 					Icon = serviceMatch.Groups[2].Success ? serviceMatch.Groups[2].Value : Icons.IconRegistry.FallbackName,
-					Title = MultilineUtils.NormalizeBrTags(serviceMatch.Groups[3].Value),
+					Title = LabelNormalizer.NormalizeBrTags(serviceMatch.Groups[3].Value),
 					GroupId = serviceMatch.Groups[4].Success ? serviceMatch.Groups[4].Value : null,
 				});
 				continue;

@@ -1,6 +1,5 @@
 using System.Text.RegularExpressions;
 using Mermaider.Models;
-using Mermaider.Text;
 
 namespace Mermaider.Parsing;
 
@@ -252,11 +251,11 @@ internal static partial class FlowchartParser
 				if (bracketMatch.Success)
 				{
 					id = bracketMatch.Groups[1].Value;
-					label = MultilineUtils.NormalizeBrTags(bracketMatch.Groups[2].Value);
+					label = LabelNormalizer.NormalizeBrTags(bracketMatch.Groups[2].Value);
 				}
 				else
 				{
-					label = MultilineUtils.NormalizeBrTags(rest);
+					label = LabelNormalizer.NormalizeBrTags(rest);
 					id = Regex.Replace(rest.Replace(' ', '_'), @"[^\w]", "", RegexOptions.None, TimeSpan.FromSeconds(2));
 				}
 				subgraphStack.Push((id, label, [], [], null));
@@ -408,7 +407,7 @@ internal static partial class FlowchartParser
 				hasArrowStart = inlineMatch.Groups[1].Success;
 				arrowOp = inlineMatch.Groups[4].Value;
 				var rawLabel = inlineMatch.Groups[3].Value.Trim();
-				edgeLabel = rawLabel.Length > 0 ? MultilineUtils.NormalizeBrTags(rawLabel) : null;
+				edgeLabel = rawLabel.Length > 0 ? LabelNormalizer.NormalizeBrTags(rawLabel) : null;
 				consumedLength = inlineMatch.Length;
 			}
 			else
@@ -420,7 +419,7 @@ internal static partial class FlowchartParser
 				hasArrowStart = arrowMatch.Groups[1].Success;
 				arrowOp = arrowMatch.Groups[2].Value;
 				var rawLabel = arrowMatch.Groups[3].Success ? arrowMatch.Groups[3].Value.Trim() : null;
-				edgeLabel = rawLabel is { Length: > 0 } ? MultilineUtils.NormalizeBrTags(rawLabel) : null;
+				edgeLabel = rawLabel is { Length: > 0 } ? LabelNormalizer.NormalizeBrTags(rawLabel) : null;
 				consumedLength = arrowMatch.Length;
 			}
 
@@ -495,7 +494,7 @@ internal static partial class FlowchartParser
 				var isMarkdown = rawLabel.StartsWith('`') && rawLabel.EndsWith('`');
 				var label = isMarkdown
 					? rawLabel[1..^1].Trim().Replace("\\n", "\n")
-					: MultilineUtils.NormalizeBrTags(rawLabel).Replace("\\n", "\n");
+					: LabelNormalizer.NormalizeBrTags(rawLabel).Replace("\\n", "\n");
 				RegisterNode(nodes, subgraphStack, new MermaidNode(id, label, shape, isMarkdown));
 				remaining = text[match.Length..];
 				break;

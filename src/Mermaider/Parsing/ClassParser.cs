@@ -1,6 +1,5 @@
 using System.Text.RegularExpressions;
 using Mermaider.Models;
-using Mermaider.Text;
 
 namespace Mermaider.Parsing;
 
@@ -325,11 +324,11 @@ internal static partial class ClassParser
 			return null;
 
 		var from = match.Groups[1].Value;
-		var fromCard = match.Groups[2].Success ? MultilineUtils.NormalizeBrTags(match.Groups[2].Value) : null;
+		var fromCard = match.Groups[2].Success ? LabelNormalizer.NormalizeBrTags(match.Groups[2].Value) : null;
 		var arrow = match.Groups[3].Value.Trim();
-		var toCard = match.Groups[4].Success ? MultilineUtils.NormalizeBrTags(match.Groups[4].Value) : null;
+		var toCard = match.Groups[4].Success ? LabelNormalizer.NormalizeBrTags(match.Groups[4].Value) : null;
 		var to = match.Groups[5].Value;
-		var label = match.Groups[6].Success ? MultilineUtils.NormalizeBrTags(match.Groups[6].Value.Trim()) : null;
+		var label = match.Groups[6].Success ? LabelNormalizer.NormalizeBrTags(match.Groups[6].Value.Trim()) : null;
 
 		var parsed = ParseArrow(arrow);
 		if (parsed == null)

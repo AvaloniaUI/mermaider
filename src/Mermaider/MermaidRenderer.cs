@@ -101,7 +101,7 @@ public static class MermaidRenderer
 	{
 		var (cleaned, _) = DiagramPreprocessor.Process(text);
 
-		var lines = PreprocessLines(cleaned);
+		var lines = DiagramPreprocessor.PreprocessLines(cleaned);
 		if (lines.Length == 0)
 			throw new MermaidParseException("Empty mermaid diagram");
 
@@ -127,7 +127,7 @@ public static class MermaidRenderer
 	public static string RenderAscii(string text, AsciiOptions? options = null)
 	{
 		var (cleaned, _) = DiagramPreprocessor.Process(text);
-		var lines = PreprocessLines(cleaned);
+		var lines = DiagramPreprocessor.PreprocessLines(cleaned);
 		if (lines.Length == 0)
 			throw new MermaidParseException("Empty mermaid diagram");
 
@@ -148,58 +148,4 @@ public static class MermaidRenderer
 			DiagramType.State => StateParser.Parse(lines),
 			_ => throw new MermaidParseException($"Diagram type '{diagramType}' is not yet supported.")
 		};
-
-	internal static string[] PreprocessLines(string text)
-	{
-		var rawLines = text.Split('\n');
-		var count = 0;
-		for (var i = 0; i < rawLines.Length; i++)
-		{
-			var trimmed = rawLines[i].Trim();
-			if (trimmed.Length > 0 && !trimmed.StartsWith("%%", StringComparison.Ordinal))
-			{
-				rawLines[count] = trimmed;
-				count++;
-			}
-		}
-		return rawLines.AsSpan(0, count).ToArray();
-	}
-
-	internal static string[] PreprocessLinesPreserveIndent(string text, AccessibilityInfo? accessibility = null)
-	{
-		var rawLines = text.Split('\n');
-		var result = new List<string>(rawLines.Length);
-		for (var i = 0; i < rawLines.Length; i++)
-		{
-			var trimmed = rawLines[i].TrimEnd();
-			var stripped = trimmed.Trim();
-			if (stripped.Length == 0 || stripped.StartsWith("%%", StringComparison.Ordinal))
-				continue;
-			if (accessibility?.HasContent == true && IsAccessibilityLine(stripped, ref i, rawLines))
-				continue;
-			result.Add(trimmed);
-		}
-		return result.ToArray();
-	}
-
-	private static bool IsAccessibilityLine(string stripped, ref int i, string[] rawLines)
-	{
-		if (stripped.StartsWith("accTitle", StringComparison.Ordinal) && stripped.Contains(':'))
-			return true;
-		if (stripped.StartsWith("accDescr", StringComparison.Ordinal) && stripped.Contains(':'))
-			return true;
-		if (stripped.StartsWith("accDescr", StringComparison.Ordinal) && stripped.Contains('{'))
-		{
-			i++;
-			while (i < rawLines.Length)
-			{
-				var inner = rawLines[i].Trim();
-				if (inner == "}" || inner.StartsWith('}'))
-					break;
-				i++;
-			}
-			return true;
-		}
-		return false;
-	}
 }

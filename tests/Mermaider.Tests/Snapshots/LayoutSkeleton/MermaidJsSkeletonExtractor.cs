@@ -39,7 +39,7 @@ internal static partial class MermaidJsSkeletonExtractor
 	public static LayoutSkeleton Extract(string svg, string diagramSource)
 	{
 		var (cleaned, _) = DiagramPreprocessor.Process(diagramSource);
-		var lines = MermaidRenderer.PreprocessLines(cleaned);
+		var lines = DiagramPreprocessor.PreprocessLines(cleaned);
 		var diagram = ErParser.Parse(lines);
 		var relationships = diagram.Relationships;
 		var entityIds = diagram.Entities.Select(e => e.Id).ToHashSet(StringComparer.Ordinal);

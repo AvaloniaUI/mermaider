@@ -349,4 +349,43 @@ public class DiagramPreprocessorTests
 
 		act.Should().NotThrow();
 	}
+
+	// ========================================================================
+	// Line splitting
+	// ========================================================================
+
+	[Test]
+	public void PreprocessLines_trims_and_drops_blank_lines_and_comments()
+	{
+		var lines = DiagramPreprocessor.PreprocessLines("graph TD\n\n  %% a comment\n    A --> B  \n\t\nB --> C");
+
+		lines.Should().Equal("graph TD", "A --> B", "B --> C");
+	}
+
+	[Test]
+	public void PreprocessLinesPreserveIndent_keeps_leading_indentation()
+	{
+		var lines = DiagramPreprocessor.PreprocessLinesPreserveIndent("treemap-beta\n\"Root\"\n    \"Leaf\": 10   \n%% comment\n");
+
+		lines.Should().Equal("treemap-beta", "\"Root\"", "    \"Leaf\": 10");
+	}
+
+	[Test]
+	public void PreprocessLinesPreserveIndent_drops_accessibility_lines_once_captured()
+	{
+		var text = "kanban\naccTitle: Board\naccDescr {\n  multi\n  line\n}\n  Todo\n    Task1";
+		var accessibility = new AccessibilityInfo { Title = "Board", Description = "multi\nline" };
+
+		var lines = DiagramPreprocessor.PreprocessLinesPreserveIndent(text, accessibility);
+
+		lines.Should().Equal("kanban", "  Todo", "    Task1");
+	}
+
+	[Test]
+	public void PreprocessLinesPreserveIndent_keeps_accessibility_lines_when_not_captured()
+	{
+		var lines = DiagramPreprocessor.PreprocessLinesPreserveIndent("kanban\naccTitle: Board\n  Todo");
+
+		lines.Should().Equal("kanban", "accTitle: Board", "  Todo");
+	}
 }

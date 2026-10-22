@@ -13,7 +13,7 @@ public class FlowchartGeometryInvariantTests
 	{
 		var example = DiagramExamples.All.Single(e => e.Slug == slug);
 		var (cleaned, _) = DiagramPreprocessor.Process(example.Source);
-		var graph = FlowchartParser.Parse(MermaidRenderer.PreprocessLines(cleaned));
+		var graph = FlowchartParser.Parse(DiagramPreprocessor.PreprocessLines(cleaned));
 		return LightweightLayoutEngine.Layout(graph);
 	}
 

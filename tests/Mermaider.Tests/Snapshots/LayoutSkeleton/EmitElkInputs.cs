@@ -27,7 +27,7 @@ public class EmitElkInputs
 			return;
 		var example = DiagramExamples.All.First(d => d.Slug == slug);
 		var (cleaned, _) = DiagramPreprocessor.Process(example.Source);
-		var diagram = ErParser.Parse(MermaidRenderer.PreprocessLines(cleaned));
+		var diagram = ErParser.Parse(DiagramPreprocessor.PreprocessLines(cleaned));
 		var positioned = LightweightErLayoutEngine.Layout(diagram);
 
 		var nodes = positioned.Entities.Select(e => new { id = e.Id, width = e.Width, height = e.Height }).ToList();

@@ -1,5 +1,6 @@
 using System.Text;
 using Mermaider.Models;
+using Mermaider.Parsing;
 using Mermaider.Text;
 using Mermaider.Theming;
 
@@ -351,7 +352,7 @@ internal static class C4SvgRenderer
 			? DesignSystem.WrapWords("[" + t + "]", inner, DesignSystem.Px(TypeRole.Meta), 400)
 			: [];
 		var description = el.Description is { Length: > 0 } d
-			? DesignSystem.WrapWords(MultilineUtils.NormalizeBrTags(d).Replace('\n', ' '), inner, DesignSystem.Px(TypeRole.Body), 400)
+			? DesignSystem.WrapWords(LabelNormalizer.NormalizeBrTags(d).Replace('\n', ' '), inner, DesignSystem.Px(TypeRole.Body), 400)
 			: [];
 
 		var h = 14 + TagLine + 4 + (name.Count * HeadingLine) + (tech.Count * MetaLine) + (description.Count > 0 ? 4 + (description.Count * BodyLine) : 0) + 16;

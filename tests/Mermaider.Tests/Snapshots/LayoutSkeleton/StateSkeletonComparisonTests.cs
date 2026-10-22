@@ -51,7 +51,7 @@ public class StateSkeletonComparisonTests
 	private static (MermaidGraph Graph, Mermaider.Models.PositionedGraph Positioned) BuildMermaider(DiagramExample example)
 	{
 		var (cleaned, _) = DiagramPreprocessor.Process(example.Source);
-		var lines = MermaidRenderer.PreprocessLines(cleaned);
+		var lines = DiagramPreprocessor.PreprocessLines(cleaned);
 		var graph = StateParser.Parse(lines);
 		return (graph, LightweightLayoutEngine.Layout(graph));
 	}

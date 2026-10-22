@@ -19,7 +19,7 @@ public class FlowchartLayoutSkeletonTests
 	private static MermaidGraph ParseFlowchart(string source)
 	{
 		var (cleaned, _) = DiagramPreprocessor.Process(source);
-		var lines = MermaidRenderer.PreprocessLines(cleaned);
+		var lines = DiagramPreprocessor.PreprocessLines(cleaned);
 		return FlowchartParser.Parse(lines);
 	}
 

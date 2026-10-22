@@ -28,7 +28,7 @@ public class LayoutSkeletonTests
 	private static ErDiagram ParseEr(string source)
 	{
 		var (cleaned, _) = DiagramPreprocessor.Process(source);
-		var lines = MermaidRenderer.PreprocessLines(cleaned);
+		var lines = DiagramPreprocessor.PreprocessLines(cleaned);
 		return ErParser.Parse(lines);
 	}
 

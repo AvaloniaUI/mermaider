@@ -1,6 +1,5 @@
 using System.Text.RegularExpressions;
 using Mermaider.Models;
-using Mermaider.Text;
 
 namespace Mermaider.Parsing;
 
@@ -219,7 +218,7 @@ internal static partial class StateParser
 			var stateAliasMatch = StateAliasPattern().Match(line);
 			if (stateAliasMatch.Success)
 			{
-				var label = MultilineUtils.NormalizeBrTags(stateAliasMatch.Groups[1].Value);
+				var label = LabelNormalizer.NormalizeBrTags(stateAliasMatch.Groups[1].Value);
 				var id = stateAliasMatch.Groups[2].Value;
 				RegisterStateNode(nodes, compositeStack, new MermaidNode(id, label, NodeShape.Rounded));
 				continue;
@@ -233,7 +232,7 @@ internal static partial class StateParser
 				var targetId = transitionMatch.Groups[4].Value;
 				var targetClass = transitionMatch.Groups[5].Success ? transitionMatch.Groups[5].Value : null;
 				var rawLabel = transitionMatch.Groups[6].Success ? transitionMatch.Groups[6].Value.Trim() : null;
-				var edgeLabel = rawLabel is { Length: > 0 } ? MultilineUtils.NormalizeBrTags(rawLabel) : null;
+				var edgeLabel = rawLabel is { Length: > 0 } ? LabelNormalizer.NormalizeBrTags(rawLabel) : null;
 
 				if (sourceId == "[*]")
 				{
@@ -293,7 +292,7 @@ internal static partial class StateParser
 			if (stateDescMatch.Success)
 			{
 				var id = stateDescMatch.Groups[1].Value;
-				var label = MultilineUtils.NormalizeBrTags(stateDescMatch.Groups[2].Value.Trim());
+				var label = LabelNormalizer.NormalizeBrTags(stateDescMatch.Groups[2].Value.Trim());
 				RegisterStateNode(nodes, compositeStack, new MermaidNode(id, label, NodeShape.Rounded));
 			}
 		}

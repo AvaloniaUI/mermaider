@@ -126,7 +126,7 @@ internal static class DiagramPreparationStage
 		ResourceLimits limits, CancellationToken ct = default)
 	{
 		var (cleaned, metadata) = DiagramPreprocessor.Process(text);
-		var lines = MermaidRenderer.PreprocessLines(cleaned);
+		var lines = DiagramPreprocessor.PreprocessLines(cleaned);
 		if (lines.Length == 0)
 			throw new MermaidParseException("Empty mermaid diagram");
 
@@ -335,7 +335,7 @@ internal static class DiagramSvgStage
 			case DiagramType.Treemap:
 				{
 					sb = TreemapSvgRenderer.RenderToBuilder(
-						TreemapParser.Parse(MermaidRenderer.PreprocessLinesPreserveIndent(diagram.CleanedSource)),
+						TreemapParser.Parse(DiagramPreprocessor.PreprocessLinesPreserveIndent(diagram.CleanedSource)),
 						context);
 					break;
 				}
@@ -349,7 +349,7 @@ internal static class DiagramSvgStage
 			case DiagramType.Mindmap:
 				{
 					sb = MindmapSvgRenderer.RenderToBuilder(
-						MindmapParser.Parse(MermaidRenderer.PreprocessLinesPreserveIndent(diagram.CleanedSource)),
+						MindmapParser.Parse(DiagramPreprocessor.PreprocessLinesPreserveIndent(diagram.CleanedSource)),
 						context);
 					break;
 				}
@@ -391,7 +391,7 @@ internal static class DiagramSvgStage
 			case DiagramType.Kanban:
 				{
 					sb = KanbanSvgRenderer.RenderToBuilder(
-						KanbanParser.Parse(MermaidRenderer.PreprocessLinesPreserveIndent(diagram.CleanedSource, accessibility)),
+						KanbanParser.Parse(DiagramPreprocessor.PreprocessLinesPreserveIndent(diagram.CleanedSource, accessibility)),
 						context);
 					break;
 				}
@@ -413,7 +413,7 @@ internal static class DiagramSvgStage
 			case DiagramType.TreeView:
 				{
 					sb = TreeViewSvgRenderer.RenderToBuilder(
-						TreeViewParser.Parse(MermaidRenderer.PreprocessLinesPreserveIndent(diagram.CleanedSource, accessibility)),
+						TreeViewParser.Parse(DiagramPreprocessor.PreprocessLinesPreserveIndent(diagram.CleanedSource, accessibility)),
 						context);
 					break;
 				}
