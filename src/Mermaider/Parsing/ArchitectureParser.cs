@@ -67,7 +67,7 @@ internal static partial class ArchitectureParser
 				services.Add(new ArchitectureService
 				{
 					Id = serviceMatch.Groups[1].Value,
-					Icon = serviceMatch.Groups[2].Success ? serviceMatch.Groups[2].Value : Icons.IconRegistry.FallbackName,
+					Icon = serviceMatch.Groups[2].Success ? serviceMatch.Groups[2].Value : ArchitectureService.DefaultIcon,
 					Title = LabelNormalizer.NormalizeBrTags(serviceMatch.Groups[3].Value),
 					GroupId = serviceMatch.Groups[4].Success ? serviceMatch.Groups[4].Value : null,
 				});

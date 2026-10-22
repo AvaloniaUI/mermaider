@@ -17,7 +17,7 @@ namespace Mermaider.Icons;
 public static class IconRegistry
 {
 	/// <summary>The icon name used when a requested icon isn't registered.</summary>
-	public const string FallbackName = "generic";
+	public const string FallbackName = Models.ArchitectureService.DefaultIcon;
 
 	private static readonly ConcurrentDictionary<string, string> Custom = new(StringComparer.OrdinalIgnoreCase);
 

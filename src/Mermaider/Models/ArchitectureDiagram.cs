@@ -26,6 +26,9 @@ public sealed record ArchitectureGroup
 /// <summary>A single architecture service/component node, drawn with an icon and a label.</summary>
 public sealed record ArchitectureService
 {
+	/// <summary>The icon a service declared without one gets.</summary>
+	public const string DefaultIcon = "generic";
+
 	public required string Id { get; init; }
 
 	/// <summary>Icon name resolved via <see cref="Icons.IconRegistry"/> (e.g. <c>"server"</c>, <c>"aws:database"</c>).</summary>
