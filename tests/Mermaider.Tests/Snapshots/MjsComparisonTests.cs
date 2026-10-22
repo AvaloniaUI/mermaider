@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using Mermaider.Examples;
@@ -125,8 +126,8 @@ public partial class MjsComparisonTests
 	{
 		var m = ViewBoxPattern().Match(svg);
 		if (!m.Success) return null;
-		if (!double.TryParse(m.Groups[1].Value, out var w)) return null;
-		if (!double.TryParse(m.Groups[2].Value, out var h)) return null;
+		if (!double.TryParse(m.Groups[1].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var w)) return null;
+		if (!double.TryParse(m.Groups[2].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var h)) return null;
 		return (w, h);
 	}
 }

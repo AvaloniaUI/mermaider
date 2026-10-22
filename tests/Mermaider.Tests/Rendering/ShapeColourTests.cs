@@ -1,3 +1,4 @@
+using System.Globalization;
 using AwesomeAssertions;
 using Mermaider.Rendering;
 using Mermaider.Theming;
@@ -36,7 +37,7 @@ public class ShapeColourTests
 		var node = NodeRect(MermaidRenderer.RenderSvg("flowchart TD\n  A([Done]) --> B[Next]"), "A");
 
 		node.Should().Contain(GradientOf("n"));
-		node.Should().Contain($"stroke-width=\"{StyleSpec.Quiet.OutlineWidth + 0.5}\"");
+		node.Should().Contain(string.Create(CultureInfo.InvariantCulture, $"stroke-width=\"{StyleSpec.Quiet.OutlineWidth + 0.5}\""));
 	}
 
 	[Test]

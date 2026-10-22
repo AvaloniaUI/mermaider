@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.RegularExpressions;
 using AwesomeAssertions;
 using Mermaider.Examples;
@@ -386,10 +387,10 @@ public partial class ErGeometryTests
 			var rest = gm.Groups[2].Value;
 			var rm = FirstRectPattern().Match(rest);
 			if (!rm.Success) continue;
-			if (!double.TryParse(rm.Groups[1].Value, out var x)) continue;
-			if (!double.TryParse(rm.Groups[2].Value, out var y)) continue;
-			if (!double.TryParse(rm.Groups[3].Value, out var w)) continue;
-			if (!double.TryParse(rm.Groups[4].Value, out var h)) continue;
+			if (!double.TryParse(rm.Groups[1].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var x)) continue;
+			if (!double.TryParse(rm.Groups[2].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var y)) continue;
+			if (!double.TryParse(rm.Groups[3].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var w)) continue;
+			if (!double.TryParse(rm.Groups[4].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var h)) continue;
 			result[id] = new BBox(x, y, w, h);
 		}
 		return result;
@@ -417,8 +418,8 @@ public partial class ErGeometryTests
 		var result = new List<ParsedLabel>();
 		foreach (Match m in LabelTextPattern().Matches(svg))
 		{
-			if (!double.TryParse(m.Groups[1].Value, out var x)) continue;
-			if (!double.TryParse(m.Groups[2].Value, out var y)) continue;
+			if (!double.TryParse(m.Groups[1].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var x)) continue;
+			if (!double.TryParse(m.Groups[2].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var y)) continue;
 			var text = m.Groups[3].Value.Trim();
 			if (string.IsNullOrEmpty(text)) continue;
 			result.Add(new ParsedLabel(new Pt(x, y), text));
@@ -432,8 +433,8 @@ public partial class ErGeometryTests
 	{
 		var m = FirstMovePattern().Match(d);
 		if (!m.Success) return null;
-		if (!double.TryParse(m.Groups[1].Value, out var x)) return null;
-		if (!double.TryParse(m.Groups[2].Value, out var y)) return null;
+		if (!double.TryParse(m.Groups[1].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var x)) return null;
+		if (!double.TryParse(m.Groups[2].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var y)) return null;
 		return new Pt(x, y);
 	}
 
@@ -444,8 +445,8 @@ public partial class ErGeometryTests
 		Pt? last = null;
 		foreach (Match m in NumericPairPattern().Matches(d))
 		{
-			if (!double.TryParse(m.Groups[1].Value, out var x)) continue;
-			if (!double.TryParse(m.Groups[2].Value, out var y)) continue;
+			if (!double.TryParse(m.Groups[1].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var x)) continue;
+			if (!double.TryParse(m.Groups[2].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var y)) continue;
 			last = new Pt(x, y);
 		}
 		return last;
@@ -496,8 +497,8 @@ public partial class ErGeometryTests
 		var svg = MermaidRenderer.RenderSvg(source);
 		var vbMatch = ViewBoxPattern().Match(svg);
 		if (!vbMatch.Success) return;
-		if (!double.TryParse(vbMatch.Groups[1].Value, out var w)) return;
-		if (!double.TryParse(vbMatch.Groups[2].Value, out var h)) return;
+		if (!double.TryParse(vbMatch.Groups[1].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var w)) return;
+		if (!double.TryParse(vbMatch.Groups[2].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var h)) return;
 		if (w <= 0) return;
 		(h / w).Should().BeLessThan(4.0,
 			$"diagram '{slug}' aspect ratio h/w={(h / w):F1} is too tall — suggests many long spanning edges");

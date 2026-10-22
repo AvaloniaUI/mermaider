@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.RegularExpressions;
 using AwesomeAssertions;
 using Mermaider.Examples;
@@ -150,12 +151,12 @@ public partial class ErEdgeCrossingTests
 			{
 				case 'M':
 				{
-					cur = (double.Parse(tok), double.Parse(tokens[i + 1].Value));
+					cur = (double.Parse(tok, CultureInfo.InvariantCulture), double.Parse(tokens[i + 1].Value, CultureInfo.InvariantCulture));
 					pts.Add(cur); i += 2; break;
 				}
 				case 'L':
 				{
-					var p1 = (double.Parse(tok), double.Parse(tokens[i + 1].Value));
+					var p1 = (double.Parse(tok, CultureInfo.InvariantCulture), double.Parse(tokens[i + 1].Value, CultureInfo.InvariantCulture));
 					for (var k = 1; k <= n; k++)
 					{
 						var tt = k / (double)n;
@@ -165,9 +166,9 @@ public partial class ErEdgeCrossingTests
 				}
 				case 'C':
 				{
-					var c1x = double.Parse(tok); var c1y = double.Parse(tokens[i + 1].Value);
-					var c2x = double.Parse(tokens[i + 2].Value); var c2y = double.Parse(tokens[i + 3].Value);
-					var ex = double.Parse(tokens[i + 4].Value); var ey = double.Parse(tokens[i + 5].Value);
+					var c1x = double.Parse(tok, CultureInfo.InvariantCulture); var c1y = double.Parse(tokens[i + 1].Value, CultureInfo.InvariantCulture);
+					var c2x = double.Parse(tokens[i + 2].Value, CultureInfo.InvariantCulture); var c2y = double.Parse(tokens[i + 3].Value, CultureInfo.InvariantCulture);
+					var ex = double.Parse(tokens[i + 4].Value, CultureInfo.InvariantCulture); var ey = double.Parse(tokens[i + 5].Value, CultureInfo.InvariantCulture);
 					for (var k = 1; k <= n; k++)
 					{
 						var tt = k / (double)n;
