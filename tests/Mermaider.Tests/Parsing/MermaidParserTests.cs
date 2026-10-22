@@ -48,6 +48,15 @@ public class MermaidParserTests
 	}
 
 	[Test]
+	public void Git_graph_header_may_end_in_a_colon()
+	{
+		var diagram = MermaidParser.Parse("gitGraph:\n  commit\n  branch develop\n  commit");
+
+		diagram.Type.Should().Be(DiagramType.GitGraph);
+		diagram.Model.Should().BeOfType<GitGraph>().Which.Actions.Should().HaveCount(3);
+	}
+
+	[Test]
 	public void Parses_state_to_graph()
 	{
 		var diagram = MermaidParser.Parse("stateDiagram-v2\n  [*] --> Idle\n  Idle --> Busy");

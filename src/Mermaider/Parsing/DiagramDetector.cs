@@ -29,7 +29,7 @@ internal static partial class DiagramDetector
 	[GeneratedRegex(@"^timeline(?:\s|$)", RegexOptions.IgnoreCase, TimeoutMs)]
 	private static partial Regex TimelineHeader();
 
-	[GeneratedRegex(@"^gitGraph\s*(LR:|TB:|BT:)?\s*$", RegexOptions.IgnoreCase, TimeoutMs)]
+	[GeneratedRegex(@"^gitGraph\s*(LR:|TB:|BT:|:)?\s*$", RegexOptions.IgnoreCase, TimeoutMs)]
 	private static partial Regex GitGraphHeader();
 
 	[GeneratedRegex(@"^radar-beta\s*$", RegexOptions.IgnoreCase, TimeoutMs)]
