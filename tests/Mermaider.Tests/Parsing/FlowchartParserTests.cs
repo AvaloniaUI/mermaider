@@ -73,6 +73,30 @@ public class FlowchartParserTests
 	}
 
 	[Test]
+	public void ParsesInlineLabelsOnEdgesWithAndWithoutArrowheads()
+	{
+		var graph = MermaidRenderer.Parse(
+			"""
+			graph LR
+			  A -- solid --> B
+			  A -. dotted .-> C
+			  A == thick ==> D
+			  B -- open solid --- E
+			  C -. open dotted .- E
+			  D == open thick === E
+			""");
+
+		graph.Edges.Select(e => (e.Source, e.Target, e.Label, e.Style, e.HasArrowEnd)).Should().Equal(
+			("A", "B", "solid", EdgeStyle.Solid, true),
+			("A", "C", "dotted", EdgeStyle.Dotted, true),
+			("A", "D", "thick", EdgeStyle.Thick, true),
+			("B", "E", "open solid", EdgeStyle.Solid, false),
+			("C", "E", "open dotted", EdgeStyle.Dotted, false),
+			("D", "E", "open thick", EdgeStyle.Thick, false));
+		graph.Nodes.Keys.Should().BeEquivalentTo("A", "B", "C", "D", "E");
+	}
+
+	[Test]
 	public void ParsesSubgraphs()
 	{
 		var graph = MermaidRenderer.Parse(

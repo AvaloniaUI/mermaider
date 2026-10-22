@@ -38,7 +38,9 @@ internal static partial class FlowchartParser
 	[GeneratedRegex(@"^(<)?(-{2,}>|-{3,}|-\.+->|-\.+-|={2,}>|={3,}|~{3,})(?:\|([^|]*)\|)?", RegexOptions.None, TimeoutMs)]
 	private static partial Regex ArrowPattern();
 
-	[GeneratedRegex(@"^(<)?(-{2}|={2}|-\.)\s+(.+?)\s+(-{2}>|={2}>|\.->)", RegexOptions.None, TimeoutMs)]
+	// The closing operator either ends in an arrowhead (-->, ==>, .->) or is open (---, ===, .-). Arrowed forms come
+	// first so that `.->` is not read as the open `.-` followed by a node starting with '>'.
+	[GeneratedRegex(@"^(<)?(-{2}|={2}|-\.)\s+(.+?)\s+(-{2,}>|={2,}>|\.+->|-{3,}|={3,}|\.+-)", RegexOptions.None, TimeoutMs)]
 	private static partial Regex InlineTextArrowPattern();
 
 	[GeneratedRegex(@"^:::([\w][\w-]*)", RegexOptions.None, TimeoutMs)]
