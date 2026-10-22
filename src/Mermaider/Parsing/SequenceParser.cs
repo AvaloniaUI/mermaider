@@ -38,6 +38,9 @@ internal static partial class SequenceParser
 	[GeneratedRegex(@"^destroy\s+(\S+)\s*$", RegexOptions.None, TimeoutMs)]
 	private static partial Regex DestroyPattern();
 
+	[GeneratedRegex(@"^(activate|deactivate)\s+(\S+)\s*$", RegexOptions.None, TimeoutMs)]
+	private static partial Regex ActivationPattern();
+
 	internal static SequenceDiagram Parse(string[] lines)
 	{
 		try
@@ -66,6 +69,7 @@ internal static partial class SequenceParser
 		var autoStep = 1;
 		var creates = new List<SequenceCreate>();
 		var destroys = new List<SequenceDestroy>();
+		var activations = new List<SequenceActivation>();
 		string? pendingCreate = null;
 		string? pendingDestroy = null;
 
@@ -108,6 +112,15 @@ internal static partial class SequenceParser
 			if (destroyMatch.Success)
 			{
 				pendingDestroy = destroyMatch.Groups[1].Value;
+				continue;
+			}
+
+			var activationMatch = ActivationPattern().Match(line);
+			if (activationMatch.Success)
+			{
+				var id = activationMatch.Groups[2].Value;
+				EnsureActor(actors, actorIds, id);
+				activations.Add(new SequenceActivation(id, activationMatch.Groups[1].Value == "activate", messages.Count - 1));
 				continue;
 			}
 
@@ -274,6 +287,7 @@ internal static partial class SequenceParser
 			Boxes = boxes,
 			Creates = creates,
 			Destroys = destroys,
+			Activations = activations,
 		};
 	}
 

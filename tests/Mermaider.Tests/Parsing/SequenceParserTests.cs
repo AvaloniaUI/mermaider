@@ -130,6 +130,28 @@ public class SequenceParserTests
 	}
 
 	[Test]
+	public void Parses_activation_statements()
+	{
+		var lines = new[]
+		{
+			"sequenceDiagram",
+			"activate A",
+			"A->>B: Request",
+			"activate B",
+			"B-->>A: Response",
+			"deactivate B",
+		};
+
+		var diagram = SequenceParser.Parse(lines);
+
+		diagram.Messages.Should().HaveCount(2);
+		diagram.Activations.Should().Equal(
+			new SequenceActivation("A", true, -1),
+			new SequenceActivation("B", true, 0),
+			new SequenceActivation("B", false, 1));
+	}
+
+	[Test]
 	public void Auto_creates_actors_from_messages()
 	{
 		var lines = new[]

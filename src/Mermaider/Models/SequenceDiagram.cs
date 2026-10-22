@@ -10,6 +10,7 @@ public sealed record SequenceDiagram
 	public IReadOnlyList<SequenceBox> Boxes { get; init; } = [];
 	public IReadOnlyList<SequenceCreate> Creates { get; init; } = [];
 	public IReadOnlyList<SequenceDestroy> Destroys { get; init; } = [];
+	public IReadOnlyList<SequenceActivation> Activations { get; init; } = [];
 }
 
 public readonly record struct SequenceActor(string Id, string Label, SequenceActorType Type);
@@ -58,3 +59,6 @@ public sealed record SequenceBox(string? Color, string Title, IReadOnlyList<stri
 public sealed record SequenceCreate(string ActorId, int AtMessageIndex);
 
 public sealed record SequenceDestroy(string ActorId, int AtMessageIndex);
+
+// An `activate` or `deactivate` statement, placed after the message at AfterIndex (-1 before the first) like a note
+public sealed record SequenceActivation(string ActorId, bool Activate, int AfterIndex);
