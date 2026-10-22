@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Text;
 using Mermaider.Layout;
 using Mermaider.Models;
@@ -66,21 +65,6 @@ internal static class MermaidRenderPipeline
 		}
 	}
 
-	private readonly struct InvariantCultureScope : IDisposable
-	{
-		private readonly CultureInfo _previousCulture;
-
-		private InvariantCultureScope(CultureInfo previousCulture) => _previousCulture = previousCulture;
-
-		internal static InvariantCultureScope Enter()
-		{
-			var previousCulture = CultureInfo.CurrentCulture;
-			CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
-			return new InvariantCultureScope(previousCulture);
-		}
-
-		public void Dispose() => CultureInfo.CurrentCulture = _previousCulture;
-	}
 }
 
 internal sealed record PreparedDiagram(
