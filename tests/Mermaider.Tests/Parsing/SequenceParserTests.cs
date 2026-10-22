@@ -77,32 +77,38 @@ public class SequenceParserTests
 	}
 
 	[Test]
-	public void Parses_solid_arrow_message()
+	public void Parses_solid_line_without_a_head()
 	{
 		var lines = new[]
 		{
 			"sequenceDiagram",
 			"A->B: Simple",
+			"A-->B: Dotted",
 		};
 
 		var diagram = SequenceParser.Parse(lines);
 
 		diagram.Messages[0].LineStyle.Should().Be(SequenceLineStyle.Solid);
-		diagram.Messages[0].ArrowHead.Should().Be(SequenceArrowHead.Open);
+		diagram.Messages[0].ArrowHead.Should().Be(SequenceArrowHead.None);
+		diagram.Messages[1].LineStyle.Should().Be(SequenceLineStyle.Dashed);
+		diagram.Messages[1].ArrowHead.Should().Be(SequenceArrowHead.None);
 	}
 
 	[Test]
-	public void Parses_cross_arrow_as_filled()
+	public void Parses_cross_arrow()
 	{
 		var lines = new[]
 		{
 			"sequenceDiagram",
 			"A-xB: Lost",
+			"A--xB: Lost reply",
 		};
 
 		var diagram = SequenceParser.Parse(lines);
 
-		diagram.Messages[0].ArrowHead.Should().Be(SequenceArrowHead.Filled);
+		diagram.Messages[0].ArrowHead.Should().Be(SequenceArrowHead.Cross);
+		diagram.Messages[1].ArrowHead.Should().Be(SequenceArrowHead.Cross);
+		diagram.Messages[1].LineStyle.Should().Be(SequenceLineStyle.Dashed);
 	}
 
 	[Test]

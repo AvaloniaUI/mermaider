@@ -242,7 +242,10 @@ internal static partial class SequenceParser
 				EnsureActor(actors, actorIds, to);
 
 				var lineStyle = arrow.StartsWith("--", StringComparison.OrdinalIgnoreCase) ? SequenceLineStyle.Dashed : SequenceLineStyle.Solid;
-				var arrowHead = arrow.Contains(">>") || arrow.Contains('x') ? SequenceArrowHead.Filled : SequenceArrowHead.Open;
+				var arrowHead = arrow.Contains(">>", StringComparison.Ordinal) ? SequenceArrowHead.Filled
+					: arrow.EndsWith('x') ? SequenceArrowHead.Cross
+					: arrow.EndsWith(')') ? SequenceArrowHead.Open
+					: SequenceArrowHead.None;
 
 				messages.Add(new SequenceMessage(
 					from, to, label, lineStyle, arrowHead,

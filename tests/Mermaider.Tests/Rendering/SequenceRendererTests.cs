@@ -56,7 +56,13 @@ public class SequenceRendererTests
 
 		// messages use the shared markers: filled for sync, open for async replies
 		svg.Should().MatchRegex("id=\"m[0-9a-f]{8}-mk-arrow\"");
-		MermaidRenderer.RenderSvg("sequenceDiagram\nA->B: open").Should().MatchRegex("id=\"m[0-9a-f]{8}-mk-open\"");
+		MermaidRenderer.RenderSvg("sequenceDiagram\nA-)B: open").Should().MatchRegex("id=\"m[0-9a-f]{8}-mk-open\"");
+	}
+
+	[Test]
+	public void Line_without_a_head_draws_no_marker()
+	{
+		MermaidRenderer.RenderSvg("sequenceDiagram\nA->B: plain").Should().NotContain("marker-end=");
 	}
 
 	[Test]

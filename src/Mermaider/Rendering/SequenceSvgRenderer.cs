@@ -159,7 +159,9 @@ internal static class SequenceSvgRenderer
 
 		var dashed = msg.LineStyle == SequenceLineStyle.Dashed;
 		var dashArray = dashed ? $" stroke-dasharray=\"{DesignSystem.DashArray}\"" : "";
-		var shape = msg.ArrowHead == SequenceArrowHead.Filled ? MarkerShape.Arrow : MarkerShape.Open;
+		// a cross keeps the filled head until the design system has a cross marker; a headless line draws none
+		var shape = msg.ArrowHead is SequenceArrowHead.Filled or SequenceArrowHead.Cross ? MarkerShape.Arrow : MarkerShape.Open;
+		var hasHead = msg.ArrowHead != SequenceArrowHead.None;
 
 		_ = sb.Append("\n<g class=\"message\" data-from=\"");
 		MultilineUtils.AppendEscapedAttr(sb, msg.From.AsSpan());
@@ -168,7 +170,13 @@ internal static class SequenceSvgRenderer
 		_ = sb.Append("\" data-label=\"");
 		MultilineUtils.AppendEscapedAttr(sb, msg.Label.AsSpan());
 		_ = sb.Append("\" data-line-style=\"").Append(dashed ? "dashed" : "solid");
-		_ = sb.Append("\" data-arrow-head=\"").Append(msg.ArrowHead == SequenceArrowHead.Filled ? "filled" : "open");
+		_ = sb.Append("\" data-arrow-head=\"").Append(msg.ArrowHead switch
+		{
+			SequenceArrowHead.Filled => "filled",
+			SequenceArrowHead.Cross => "cross",
+			SequenceArrowHead.None => "none",
+			_ => "open",
+		});
 		_ = sb.Append("\" data-self=\"").Append(msg.IsSelf ? "true" : "false");
 		_ = sb.Append("\">\n");
 
@@ -185,8 +193,10 @@ internal static class SequenceSvgRenderer
 				.Append(msg.X1 + loopW).Append(',').Append(msg.Y + loopH).Append(' ')
 				.Append(msg.X2).Append(',').Append(msg.Y + loopH)
 				.Append("\" fill=\"none\" stroke=\"").Append(DesignSystem.EdgeColor).Append("\" stroke-width=\"").Append(ds.EdgeWidth)
-				.Append("\" stroke-linejoin=\"round\"").Append(dashArray)
-				.Append(" marker-end=\"").Append(ds.Marker(shape)).Append("\" />\n  ");
+				.Append("\" stroke-linejoin=\"round\"").Append(dashArray);
+			if (hasHead)
+				_ = sb.Append(" marker-end=\"").Append(ds.Marker(shape)).Append('"');
+			_ = sb.Append(" />\n  ");
 
 			AppendAutoNumberBadge(sb, ds, ref label, msg.X1, msg.Y);
 			if (label.Length > 0)
@@ -199,11 +209,12 @@ internal static class SequenceSvgRenderer
 		}
 		else
 		{
-			var markerStart = msg.Bidirectional ? $" marker-start=\"{ds.Marker(shape, atStart: true)}\"" : "";
+			var markerStart = msg.Bidirectional && hasHead ? $" marker-start=\"{ds.Marker(shape, atStart: true)}\"" : "";
+			var markerEnd = hasHead ? $" marker-end=\"{ds.Marker(shape)}\"" : "";
 			_ = sb.Append("  <line x1=\"").Append(msg.X1).Append("\" y1=\"").Append(msg.Y)
 				.Append("\" x2=\"").Append(msg.X2).Append("\" y2=\"").Append(msg.Y)
 				.Append("\" stroke=\"").Append(DesignSystem.EdgeColor).Append("\" stroke-width=\"").Append(ds.EdgeWidth).Append('"').Append(dashArray)
-				.Append(" marker-end=\"").Append(ds.Marker(shape)).Append('"').Append(markerStart).Append(" />\n  ");
+				.Append(markerEnd).Append(markerStart).Append(" />\n  ");
 
 			AppendAutoNumberBadge(sb, ds, ref label, msg.X1, msg.Y);
 			if (label.Length > 0)
