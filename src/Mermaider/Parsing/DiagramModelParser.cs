@@ -48,7 +48,7 @@ internal static class DiagramModelParser
 				}
 			case DiagramType.Flowchart or DiagramType.State:
 				{
-					var parsed = MermaidRenderer.ParseInternal(lines, diagram.DiagramType);
+					var parsed = diagram.DiagramType == DiagramType.Flowchart ? FlowchartParser.Parse(lines) : StateParser.Parse(lines);
 					ResourceGuard.CheckElements(parsed.Nodes.Count + parsed.Edges.Count, limits);
 					return parsed;
 				}

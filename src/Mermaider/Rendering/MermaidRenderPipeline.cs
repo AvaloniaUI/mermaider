@@ -67,14 +67,6 @@ internal static class MermaidRenderPipeline
 
 }
 
-internal sealed record PreparedDiagram(
-	string CleanedSource,
-	DiagramMetadata Metadata,
-	string[] Lines,
-	string[] FilteredLines,
-	DiagramType DiagramType,
-	AccessibilityInfo Accessibility);
-
 internal sealed record NormalizedRenderStyles(
 	DiagramColors Colors,
 	string Font,
@@ -108,27 +100,7 @@ internal static class DiagramPreparationStage
 {
 	internal static PreparedDiagram Prepare(string text, RenderOptions? options,
 		ResourceLimits limits, CancellationToken ct = default)
-	{
-		var (cleaned, metadata) = DiagramPreprocessor.Process(text);
-		var lines = DiagramPreprocessor.PreprocessLines(cleaned);
-		if (lines.Length == 0)
-			throw new MermaidParseException("Empty mermaid diagram");
-
-		// Line count + line length checks (bounds aggregate regex budget)
-		ResourceGuard.CheckLines(lines, limits);
-		ResourceGuard.CheckLineLength(lines, limits);
-		ct.ThrowIfCancellationRequested();
-
-		var diagramType = DiagramDetector.Detect(cleaned.AsSpan());
-		var allowedDiagrams = options?.AllowedDiagrams ?? DiagramTypes.All;
-		if ((allowedDiagrams & diagramType.ToFlag()) == 0)
-			throw new MermaidParseException(
-				$"Diagram type '{diagramType}' is not in the allowed set. " +
-				$"Adjust RenderOptions.AllowedDiagrams to include it.");
-
-		var (accessibility, filteredLines) = AccessibilityParser.Extract(lines);
-		return new PreparedDiagram(cleaned, metadata, lines, filteredLines, diagramType, accessibility);
-	}
+		=> DiagramPreparation.Prepare(text, options?.AllowedDiagrams ?? DiagramTypes.All, limits, ct);
 }
 
 internal static class RenderConfigurationNormalizer

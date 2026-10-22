@@ -34,7 +34,7 @@ public static class MermaidParser
 		using var culture = InvariantCultureScope.Enter();
 		cancellationToken.ThrowIfCancellationRequested();
 
-		var prepared = DiagramPreparationStage.Prepare(text, options: null, effectiveLimits, cancellationToken);
+		var prepared = DiagramPreparation.Prepare(text, DiagramTypes.All, effectiveLimits, cancellationToken);
 		cancellationToken.ThrowIfCancellationRequested();
 
 		return new MermaidDiagram
