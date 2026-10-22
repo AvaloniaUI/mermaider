@@ -227,7 +227,7 @@ internal static class ClassSvgRenderer
 			return;
 
 		// dash language: solid = structure, dashed = dependency / realization
-		var isDashed = rel.Type is ClassRelationType.Dependency or ClassRelationType.Realization;
+		var isDashed = rel.Type is ClassRelationType.Dependency or ClassRelationType.Realization or ClassRelationType.DashedLink;
 		var dashArray = isDashed ? $" stroke-dasharray=\"{DesignSystem.DashArray}\"" : "";
 
 		_ = sb.Append("\n<path class=\"class-relationship\" data-from=\"");

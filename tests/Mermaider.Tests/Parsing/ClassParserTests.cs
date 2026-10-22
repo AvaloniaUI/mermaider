@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using Mermaider.Models;
 using Mermaider.Parsing;
+using Mermaider.Rendering;
 
 namespace Mermaider.Tests.Parsing;
 
@@ -134,6 +135,19 @@ public class ClassParserTests
 		var diagram = ClassParser.Parse(lines);
 
 		diagram.Relationships[0].Type.Should().Be(ClassRelationType.Realization);
+	}
+
+	[Test]
+	public void Parses_plain_links_without_markers()
+	{
+		var diagram = ClassParser.Parse(["classDiagram", "A -- B", "C .. D : uses"]);
+
+		diagram.Relationships.Should().HaveCount(2);
+		diagram.Relationships[0].Type.Should().Be(ClassRelationType.Link);
+		diagram.Relationships[1].Type.Should().Be(ClassRelationType.DashedLink);
+		diagram.Relationships[1].Label.Should().Be("uses");
+		ClassSvgRenderer.MarkerShapeOf(ClassRelationType.Link).Should().BeNull();
+		ClassSvgRenderer.MarkerShapeOf(ClassRelationType.DashedLink).Should().BeNull();
 	}
 
 	[Test]
