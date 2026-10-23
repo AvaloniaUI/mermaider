@@ -15,9 +15,16 @@ internal static partial class GanttParser
 	/// <summary>Stable synthetic origin when a chart has no absolute dates (never wall-clock).</summary>
 	private static readonly DateTime SyntheticOrigin = new(2020, 1, 1);
 
+	/// <summary>Start of Unix time for <c>dateFormat X</c> (seconds) and <c>x</c> (milliseconds), kind unspecified.</summary>
+	private static readonly DateTime UnixEpoch = new(1970, 1, 1);
+
+	// Sentinel .NET formats for the Unix time dateFormats, which no custom format string expresses.
+	private const string UnixSecondsFormat = "\0X";
+	private const string UnixMillisecondsFormat = "\0x";
+
 	// Supported mermaid dateFormat tokens (dayjs-style) we map to .NET custom format:
-	// YYYY/YY, MM/M, DD/D, HH/H, mm, ss. Unsupported tokens (Do, DDD, Q, X, …) are left as-is
-	// and typically fail TryParseExact → treated as non-dates.
+	// YYYY/YY, MM/M, DD/D, HH/H, mm, ss, and the whole-format Unix times X and x. Unsupported tokens
+	// (Do, DDD, Q, …) are left as-is and typically fail TryParseExact → treated as non-dates.
 
 	[GeneratedRegex(@"^gantt(?:\s+title\s+(.+))?\s*$", RegexOptions.IgnoreCase, TimeoutMs)]
 	private static partial Regex HeaderPattern();
@@ -44,8 +51,14 @@ internal static partial class GanttParser
 	[GeneratedRegex(@"^after\s+(.+)$", RegexOptions.IgnoreCase, TimeoutMs)]
 	private static partial Regex AfterPattern();
 
+	[GeneratedRegex(@"^until\s+(.+)$", RegexOptions.IgnoreCase, TimeoutMs)]
+	private static partial Regex UntilPattern();
+
 	[GeneratedRegex(@"^excludes\s+(.+)$", RegexOptions.IgnoreCase, TimeoutMs)]
 	private static partial Regex ExcludesPattern();
+
+	[GeneratedRegex(@"^(axisFormat|tickInterval|todayMarker|weekday|weekend)\s+(.+)$", RegexOptions.IgnoreCase, TimeoutMs)]
+	private static partial Regex SettingPattern();
 
 	internal static GanttDiagram Parse(string[] lines)
 	{
@@ -73,20 +86,17 @@ internal static partial class GanttParser
 		}
 	}
 
+	// Every statement is read before any task is resolved: `after` and `until` may name a task defined further down,
+	// and excludes declared after a task still apply to it, as in mermaid.js.
 	private static GanttDiagram ParseCore(string[] lines)
 	{
 		string? title = null;
 		var dateFormat = "YYYY-MM-DD";
 		var netDateFormat = ToNetDateFormat(dateFormat);
-
-		var sections = new List<GanttSection>();
-		string? currentSectionName = null;
-		var currentTasks = new List<GanttTask>();
-
-		var byId = new Dictionary<string, GanttTask>(StringComparer.OrdinalIgnoreCase);
-		DateTime? previousEnd = null;
-		DateTime? chartOrigin = null;
-		var excludeWeekends = false;
+		string? axisFormat = null, tickInterval = null, weekday = null, todayMarker = null;
+		var excludes = new Excludes();
+		var sections = new List<(string? Name, List<int> Tasks)>();
+		var raws = new List<RawTask>();
 
 		var headerMatch = HeaderPattern().Match(lines[0]);
 		if (headerMatch.Success && headerMatch.Groups[1].Success)
@@ -95,9 +105,6 @@ internal static partial class GanttParser
 		for (var i = 1; i < lines.Length; i++)
 		{
 			var line = lines[i];
-
-			if (IsDeferredDirective(line))
-				continue;
 
 			// Gantt click/interaction directives can execute arbitrary JavaScript callbacks.
 			// They are disabled in mermaid.js strict mode for the same reason — reject early.
@@ -109,14 +116,34 @@ internal static partial class GanttParser
 			var excludesMatch = ExcludesPattern().Match(line);
 			if (excludesMatch.Success)
 			{
-				// v1: implement "weekends" (Sat/Sun). Other exclude tokens are accepted but ignored.
-				var tokens = excludesMatch.Groups[1].Value
-					.Split([',', ' '], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-				foreach (var t in tokens)
+				foreach (var token in excludesMatch.Groups[1].Value.Split([',', ' '], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+					excludes.Add(token, netDateFormat);
+				continue;
+			}
+
+			var settingMatch = SettingPattern().Match(line);
+			if (settingMatch.Success)
+			{
+				var value = settingMatch.Groups[2].Value.Trim();
+				switch (settingMatch.Groups[1].Value.ToLowerInvariant())
 				{
-					if (t.Equals("weekends", StringComparison.OrdinalIgnoreCase))
-						excludeWeekends = true;
+					case "axisformat":
+						axisFormat = value;
+						break;
+					case "tickinterval":
+						tickInterval = value;
+						break;
+					case "todaymarker":
+						todayMarker = value;
+						break;
+					case "weekday":
+						weekday = value;
+						break;
+					case "weekend":
+						excludes.SetWeekend(value);
+						break;
 				}
+
 				continue;
 			}
 
@@ -131,18 +158,23 @@ internal static partial class GanttParser
 			if (dfMatch.Success)
 			{
 				dateFormat = dfMatch.Groups[1].Value.Trim();
-				netDateFormat = ToNetDateFormat(dateFormat);
+				netDateFormat = dateFormat switch
+				{
+					"X" => UnixSecondsFormat,
+					"x" => UnixMillisecondsFormat,
+					_ => ToNetDateFormat(dateFormat),
+				};
+
 				// Fail early on format strings that .NET rejects (wrap as MermaidParseException via Parse).
-				ValidateNetDateFormat(netDateFormat);
+				if (netDateFormat is not (UnixSecondsFormat or UnixMillisecondsFormat))
+					ValidateNetDateFormat(netDateFormat);
 				continue;
 			}
 
 			var sectionMatch = SectionPattern().Match(line);
 			if (sectionMatch.Success)
 			{
-				FlushSection(sections, currentSectionName, currentTasks);
-				currentSectionName = sectionMatch.Groups[1].Value.Trim();
-				currentTasks = [];
+				sections.Add((sectionMatch.Groups[1].Value.Trim(), []));
 				continue;
 			}
 
@@ -150,48 +182,38 @@ internal static partial class GanttParser
 			if (!taskMatch.Success)
 				continue;
 
-			var name = taskMatch.Groups[1].Value.Trim();
-			var meta = taskMatch.Groups[2].Value.Trim();
-			var raw = ParseRawTask(name, meta, netDateFormat);
-			var task = ResolveTask(raw, byId, previousEnd, ref chartOrigin, excludeWeekends);
-
-			currentTasks.Add(task);
-			if (task.Id is { Length: > 0 })
-				byId[task.Id] = task;
-			previousEnd = task.End;
+			raws.Add(ParseRawTask(taskMatch.Groups[1].Value.Trim(), taskMatch.Groups[2].Value.Trim(), netDateFormat));
+			if (sections.Count == 0)
+				sections.Add((null, []));
+			sections[^1].Tasks.Add(raws.Count - 1);
 		}
 
-		FlushSection(sections, currentSectionName, currentTasks);
+		var resolver = new TaskResolver(raws, excludes);
+		var result = new List<GanttSection>(sections.Count);
+		foreach (var (name, indices) in sections)
+		{
+			if (indices.Count == 0)
+				continue;
 
-		if (sections.Count == 0)
-			sections.Add(new GanttSection(null, []));
+			var tasks = new List<GanttTask>(indices.Count);
+			foreach (var index in indices)
+				tasks.Add(resolver.Resolve(index));
+			result.Add(new GanttSection(name, tasks));
+		}
+
+		if (result.Count == 0)
+			result.Add(new GanttSection(null, []));
 
 		return new GanttDiagram
 		{
 			Title = title,
 			DateFormat = dateFormat,
-			Sections = sections,
+			AxisFormat = axisFormat,
+			TickInterval = tickInterval,
+			Weekday = weekday,
+			TodayMarker = todayMarker,
+			Sections = result,
 		};
-	}
-
-	/// <summary>
-	/// Directives deferred for a later version (axis/tick/today marker).
-	/// <c>excludes</c> is handled separately (weekends MVP).
-	/// </summary>
-	private static bool IsDeferredDirective(string line) =>
-		line.StartsWith("axisFormat", StringComparison.OrdinalIgnoreCase) ||
-		line.StartsWith("tickInterval", StringComparison.OrdinalIgnoreCase) ||
-		line.StartsWith("todayMarker", StringComparison.OrdinalIgnoreCase) ||
-		line.StartsWith("weekday", StringComparison.OrdinalIgnoreCase) ||
-		line.StartsWith("weekend", StringComparison.OrdinalIgnoreCase);
-
-	private static void FlushSection(List<GanttSection> sections, string? name, List<GanttTask> tasks)
-	{
-		if (tasks.Count == 0 && name is null)
-			return;
-		if (tasks.Count == 0)
-			return;
-		sections.Add(new GanttSection(name, tasks));
 	}
 
 	/// <summary>
@@ -276,6 +298,8 @@ internal static partial class GanttParser
 		public GanttTaskTags Tags { get; init; }
 		public DateTime? StartDate { get; init; }
 		public string[]? AfterIds { get; init; }
+		/// <summary>Tasks whose earliest start ends this task (<c>until a b</c>).</summary>
+		public string[]? UntilIds { get; init; }
 		public DateTime? EndDate { get; init; }
 		public ParsedDuration? Duration { get; init; }
 		/// <summary>True when end was an explicit calendar date (excludes do not extend end).</summary>
@@ -297,6 +321,7 @@ internal static partial class GanttParser
 		string? id = null;
 		DateTime? startDate = null;
 		string[]? afterIds = null;
+		string[]? untilIds = null;
 		DateTime? endDate = null;
 		ParsedDuration? duration = null;
 		var manualEndTime = false;
@@ -323,6 +348,7 @@ internal static partial class GanttParser
 		// (greedy id — locked dialect for charts like "a1, 2026-07-07, 1d" and "id, endDate").
 		if (i < tokens.Count &&
 			!IsAfter(tokens[i]) &&
+			!IsUntil(tokens[i]) &&
 			!IsDuration(tokens[i]) &&
 			ParseDate(tokens[i], netDateFormat) is null)
 		{
@@ -339,6 +365,10 @@ internal static partial class GanttParser
 			if (IsAfter(t))
 			{
 				afterIds = ParseAfterIds(t);
+			}
+			else if (IsUntil(t))
+			{
+				untilIds = ParseIds(UntilPattern(), t);
 			}
 			else if (IsDuration(t))
 			{
@@ -376,7 +406,11 @@ internal static partial class GanttParser
 			if (i < tokens.Count)
 			{
 				var t1 = tokens[i];
-				if (IsDuration(t1))
+				if (IsUntil(t1))
+				{
+					untilIds = ParseIds(UntilPattern(), t1);
+				}
+				else if (IsDuration(t1))
 				{
 					duration = ParseDuration(t1);
 				}
@@ -389,7 +423,7 @@ internal static partial class GanttParser
 		}
 
 		// Defaults when end is unspecified
-		if (duration is null && endDate is null)
+		if (duration is null && endDate is null && untilIds is null)
 		{
 			duration = (tags & GanttTaskTags.Milestone) != 0
 				? ParsedDuration.Zero
@@ -403,80 +437,158 @@ internal static partial class GanttParser
 			Tags = tags,
 			StartDate = startDate,
 			AfterIds = afterIds,
+			UntilIds = untilIds,
 			EndDate = endDate,
 			Duration = duration,
 			ManualEndTime = manualEndTime,
 		};
 	}
 
-	private static GanttTask ResolveTask(
-		RawTask raw,
-		Dictionary<string, GanttTask> byId,
-		DateTime? previousEnd,
-		ref DateTime? chartOrigin,
-		bool excludeWeekends)
+	// Resolves tasks on demand, so a task may depend on one defined later; a dependency cycle is a parse error.
+	private sealed class TaskResolver
 	{
-		if (raw.StartDate is { } absStart)
-			chartOrigin ??= absStart;
-		if (raw.EndDate is { } absEnd)
-			chartOrigin ??= absEnd;
+		private readonly List<RawTask> _raws;
+		private readonly Excludes _excludes;
+		private readonly GanttTask?[] _resolved;
+		private readonly bool[] _visiting;
+		private readonly Dictionary<string, int> _byId = new(StringComparer.OrdinalIgnoreCase);
+		private readonly DateTime _origin;
 
-		var origin = chartOrigin ?? SyntheticOrigin;
-
-		var start = ResolveStart(raw, byId, previousEnd, origin);
-		var end = ResolveEnd(raw, start);
-
-		if (excludeWeekends && !raw.ManualEndTime && end > start)
-			end = ApplyWeekendExcludes(start, end);
-
-		if (end < start)
-			end = start;
-
-		return new GanttTask(raw.Name, raw.Id, start, end, raw.Tags);
-	}
-
-	private static DateTime ResolveStart(
-		RawTask raw,
-		Dictionary<string, GanttTask> byId,
-		DateTime? previousEnd,
-		DateTime origin)
-	{
-		if (raw.AfterIds is { Length: > 0 })
+		public TaskResolver(List<RawTask> raws, Excludes excludes)
 		{
-			var maxEnd = DateTime.MinValue;
-			var found = false;
-			foreach (var refId in raw.AfterIds)
+			_raws = raws;
+			_excludes = excludes;
+			_resolved = new GanttTask?[raws.Count];
+			_visiting = new bool[raws.Count];
+			DateTime? origin = null;
+			for (var i = 0; i < raws.Count; i++)
 			{
-				if (byId.TryGetValue(refId, out var dep) && dep.End > maxEnd)
-				{
-					maxEnd = dep.End;
-					found = true;
-				}
+				if (raws[i].Id is { Length: > 0 } id)
+					_byId[id] = i;
+				origin ??= raws[i].StartDate ?? raws[i].EndDate;
 			}
-			return found ? maxEnd : previousEnd ?? origin;
+
+			_origin = origin ?? SyntheticOrigin;
 		}
 
-		if (raw.StartDate is { } sd)
-			return sd;
+		public GanttTask Resolve(int index)
+		{
+			if (_resolved[index] is { } done)
+				return done;
+			if (_visiting[index])
+				throw new MermaidParseException($"Gantt task '{_raws[index].Name}' depends on itself through after or until.");
 
-		return previousEnd ?? origin;
+			_visiting[index] = true;
+			var raw = _raws[index];
+			var start = ResolveStart(raw, index);
+			var (end, manual) = ResolveEnd(raw, start);
+			if (!manual && _excludes.Any && end > start)
+				end = ApplyExcludes(start, end, _excludes);
+			if (end < start)
+				end = start;
+
+			var task = new GanttTask(raw.Name, raw.Id, start, end, raw.Tags);
+			_resolved[index] = task;
+			_visiting[index] = false;
+			return task;
+		}
+
+		// A start that is not given follows the previous task's end, resolved only then: a task with its own start must
+		// not depend on its predecessor, which may itself end `until` this task.
+		private DateTime ResolveStart(RawTask raw, int index)
+		{
+			if (raw.AfterIds is { Length: > 0 })
+			{
+				var maxEnd = DateTime.MinValue;
+				var found = false;
+				foreach (var refId in raw.AfterIds)
+				{
+					if (_byId.TryGetValue(refId, out var dep) && Resolve(dep).End is var depEnd && depEnd > maxEnd)
+					{
+						maxEnd = depEnd;
+						found = true;
+					}
+				}
+
+				return found ? maxEnd : PreviousEnd(index);
+			}
+
+			if (raw.StartDate is { } sd)
+				return sd;
+
+			return PreviousEnd(index);
+		}
+
+		private DateTime PreviousEnd(int index) => index > 0 ? Resolve(index - 1).End : _origin;
+
+		// The end, and whether it was given outright (a date or `until`), which excludes do not stretch.
+		private (DateTime End, bool Manual) ResolveEnd(RawTask raw, DateTime start)
+		{
+			if (raw.UntilIds is { Length: > 0 })
+			{
+				var minStart = DateTime.MaxValue;
+				var found = false;
+				foreach (var refId in raw.UntilIds)
+				{
+					if (_byId.TryGetValue(refId, out var dep) && Resolve(dep).Start is var depStart && depStart < minStart)
+					{
+						minStart = depStart;
+						found = true;
+					}
+				}
+
+				return found ? (minStart, true) : (start.AddDays(1), false);
+			}
+
+			if (raw.Duration is { } dur)
+				return (dur.AddTo(start), false);
+			if (raw.EndDate is { } ed)
+				return (ed, raw.ManualEndTime);
+			if ((raw.Tags & GanttTaskTags.Milestone) != 0)
+				return (start, true);
+			return (start.AddDays(1), false);
+		}
 	}
 
-	private static DateTime ResolveEnd(RawTask raw, DateTime start)
+	// What `excludes` and `weekend` take out of the calendar: weekends (Saturday and Sunday, or Friday and Saturday
+	// after `weekend friday`), named weekdays, and dates in the chart's dateFormat.
+	private sealed class Excludes
 	{
-		if (raw.Duration is { } dur)
-			return dur.AddTo(start);
-		if (raw.EndDate is { } ed)
-			return ed;
-		if ((raw.Tags & GanttTaskTags.Milestone) != 0)
-			return start;
-		return start.AddDays(1);
+		private readonly HashSet<DayOfWeek> _days = [];
+		private readonly HashSet<DateTime> _dates = [];
+		private bool _weekends;
+		private DayOfWeek _weekendStart = DayOfWeek.Saturday;
+
+		public bool Any => _weekends || _days.Count > 0 || _dates.Count > 0;
+
+		public void Add(string token, string netDateFormat)
+		{
+			if (token.Equals("weekends", StringComparison.OrdinalIgnoreCase))
+				_weekends = true;
+			else if (Enum.TryParse<DayOfWeek>(token, ignoreCase: true, out var day) && !int.TryParse(token, NumberStyles.Integer, CultureInfo.InvariantCulture, out _))
+				_ = _days.Add(day);
+			else if (ParseDate(token, netDateFormat) is { } date)
+				_ = _dates.Add(date.Date);
+		}
+
+		public void SetWeekend(string value)
+		{
+			if (value.Equals("friday", StringComparison.OrdinalIgnoreCase))
+				_weekendStart = DayOfWeek.Friday;
+			else if (value.Equals("saturday", StringComparison.OrdinalIgnoreCase))
+				_weekendStart = DayOfWeek.Saturday;
+		}
+
+		public bool IsExcluded(DateTime d)
+			=> (_weekends && (d.DayOfWeek == _weekendStart || d.DayOfWeek == (DayOfWeek)(((int)_weekendStart + 1) % 7)))
+				|| _days.Contains(d.DayOfWeek)
+				|| _dates.Contains(d.Date);
 	}
 
 	/// <summary>
-	/// Mermaid fixTaskDates for weekends: for each day in (start, end], if weekend, push end +1 day.
+	/// Mermaid fixTaskDates: for each day in (start, end], if it is excluded, push end +1 day.
 	/// </summary>
-	private static DateTime ApplyWeekendExcludes(DateTime start, DateTime end)
+	private static DateTime ApplyExcludes(DateTime start, DateTime end, Excludes excludes)
 	{
 		var cursor = start.Date.AddDays(1);
 		var endCursor = end;
@@ -485,9 +597,9 @@ internal static partial class GanttParser
 		{
 			if (iterations++ > MaxExcludeIterations)
 				throw new MermaidParseException(
-					"Failed to resolve gantt task end after excludes weekends (iteration cap).");
+					"Failed to resolve gantt task end after excludes (iteration cap).");
 
-			if (IsWeekend(cursor))
+			if (excludes.IsExcluded(cursor))
 				endCursor = endCursor.AddDays(1);
 
 			cursor = cursor.AddDays(1);
@@ -497,9 +609,6 @@ internal static partial class GanttParser
 			endCursor = endCursor.Date + end.TimeOfDay;
 		return endCursor;
 	}
-
-	private static bool IsWeekend(DateTime d) =>
-		d.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;
 
 	private static List<string> SplitMeta(string meta)
 	{
@@ -536,6 +645,11 @@ internal static partial class GanttParser
 			tag = GanttTaskTags.Milestone;
 			return true;
 		}
+		if (token.Equals("vert", StringComparison.OrdinalIgnoreCase))
+		{
+			tag = GanttTaskTags.Vert;
+			return true;
+		}
 		tag = GanttTaskTags.None;
 		return false;
 	}
@@ -544,9 +658,15 @@ internal static partial class GanttParser
 		token.StartsWith("after", StringComparison.OrdinalIgnoreCase) &&
 		(token.Length == 5 || char.IsWhiteSpace(token[5]));
 
-	private static string[] ParseAfterIds(string token)
+	private static bool IsUntil(string token) =>
+		token.StartsWith("until", StringComparison.OrdinalIgnoreCase) &&
+		token.Length > 5 && char.IsWhiteSpace(token[5]);
+
+	private static string[] ParseAfterIds(string token) => ParseIds(AfterPattern(), token);
+
+	private static string[] ParseIds(Regex pattern, string token)
 	{
-		var m = AfterPattern().Match(token);
+		var m = pattern.Match(token);
 		if (!m.Success)
 			return [];
 		return m.Groups[1].Value
@@ -628,6 +748,13 @@ internal static partial class GanttParser
 
 	private static DateTime? ParseDate(string text, string netFormat)
 	{
+		if (netFormat is UnixSecondsFormat or UnixMillisecondsFormat)
+		{
+			if (!double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var value))
+				return null;
+			return netFormat == UnixSecondsFormat ? UnixEpoch.AddSeconds(value) : UnixEpoch.AddMilliseconds(value);
+		}
+
 		// Unspecified kind throughout — never wall-clock, never forced UTC.
 		// Strict parse under active dateFormat only (no culture-loose TryParse fallback —
 		// that mis-tokenized ids/metadata under non-ISO formats).

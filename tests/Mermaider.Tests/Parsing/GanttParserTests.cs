@@ -439,4 +439,90 @@ public class GanttParserTests
 		act.Should().Throw<MermaidParseException>()
 			.WithMessage("*click*");
 	}
+
+	[Test]
+	public void Until_ends_a_task_where_the_named_tasks_start_even_when_defined_later()
+	{
+		var diagram = GanttParser.Parse(
+		[
+			"gantt",
+			"apple :a, 2017-07-20, 1w",
+			"banana :crit, b, 2017-07-23, 1d",
+			"cherry :active, c, after b a, 1d",
+			"kiwi   :d, 2017-07-20, until b c",
+			"Add to mermaid :until isadded",
+			"Functionality added :milestone, isadded, 2017-08-01, 0d",
+		]);
+		var tasks = diagram.Sections[0].Tasks;
+
+		tasks[3].End.Should().Be(new DateTime(2017, 7, 23));
+		tasks[4].Start.Should().Be(tasks[3].End);
+		tasks[4].End.Should().Be(new DateTime(2017, 8, 1));
+	}
+
+	[Test]
+	public void Dependency_cycle_is_a_parse_error()
+	{
+		var parse = () => GanttParser.Parse(["gantt", "dateFormat YYYY-MM-DD", "A : a, after b, 1d", "B : b, after a, 1d"]);
+
+		parse.Should().Throw<MermaidParseException>();
+	}
+
+	[Test]
+	public void Unix_time_date_formats()
+	{
+		var seconds = GanttParser.Parse(["gantt", "dateFormat X", "section Issue", "71 : 0, 71"]).Sections[0].Tasks[0];
+		var millis = GanttParser.Parse(["gantt", "dateFormat x", "Task : 1000, 61000"]).Sections[0].Tasks[0];
+
+		seconds.Start.Should().Be(new DateTime(1970, 1, 1));
+		seconds.End.Should().Be(new DateTime(1970, 1, 1, 0, 1, 11));
+		millis.End.Should().Be(new DateTime(1970, 1, 1, 0, 1, 1));
+	}
+
+	[Test]
+	public void Vert_tag_marks_a_vertical_marker()
+	{
+		var task = GanttParser.Parse(["gantt", "dateFormat HH:mm", "Initial vert : vert, v1, 17:30, 2m"]).Sections[0].Tasks[0];
+
+		task.Tags.Should().Be(GanttTaskTags.Vert);
+		task.Start.TimeOfDay.Should().Be(new TimeSpan(17, 30, 0));
+	}
+
+	[Test]
+	public void Excludes_weekdays_and_dates_extend_duration_based_end()
+	{
+		// 2026-01-01 is Thursday: Friday the 2nd and the date the 5th are excluded, so 3 days end on the 6th.
+		var task = GanttParser.Parse(["gantt", "dateFormat YYYY-MM-DD", "excludes friday, 2026-01-05", "Task : a1, 2026-01-01, 3d"]).Sections[0].Tasks[0];
+
+		task.End.Date.Should().Be(new DateTime(2026, 1, 6));
+	}
+
+	[Test]
+	public void Weekend_friday_moves_the_weekend_to_friday_and_saturday()
+	{
+		// Wednesday the 7th plus 2 days ends on Friday; with a Friday-Saturday weekend both are skipped.
+		var lines = new[] { "gantt", "dateFormat YYYY-MM-DD", "excludes weekends", "weekend friday", "Task : a1, 2026-01-07, 2d" };
+
+		GanttParser.Parse(lines).Sections[0].Tasks[0].End.Date.Should().Be(new DateTime(2026, 1, 11));
+		GanttParser.Parse(lines.Where(l => !l.StartsWith("weekend ", StringComparison.Ordinal)).ToArray()).Sections[0].Tasks[0].End.Date.Should().Be(new DateTime(2026, 1, 9));
+	}
+
+	[Test]
+	public void Excludes_after_a_task_still_apply_to_it()
+	{
+		var task = GanttParser.Parse(["gantt", "dateFormat YYYY-MM-DD", "Task : a1, 2026-01-01, 3d", "excludes weekends"]).Sections[0].Tasks[0];
+
+		task.End.Date.Should().Be(new DateTime(2026, 1, 6));
+	}
+
+	[Test]
+	public void Axis_tick_weekday_and_today_marker_settings()
+	{
+		var diagram = GanttParser.Parse(["gantt", "dateFormat HH:mm", "axisFormat %H:%M", "tickInterval 1week", "weekday monday", "todayMarker off", "A : 10:00, 1h"]);
+
+		diagram.AxisFormat.Should().Be("%H:%M");
+		diagram.TickInterval.Should().Be("1week");
+		diagram.Weekday.Should().Be("monday");
+		diagram.TodayMarker.Should().Be("off");
+	}
 }
