@@ -190,7 +190,7 @@ internal static partial class DiagramPreprocessor
 		return (afterBlock, title, ReadConfig(yamlContent));
 	}
 
-	// Flattens the top-level `config:` map into dotted keys. A YAML subset: nested maps by indentation and scalar
+	// Flattens the top-level `config:` map into dotted keys, and keeps other top-level scalars under their own name. A YAML subset: nested maps by indentation and scalar
 	// values, quotes stripped; list items, flow collections and multi-line scalars are skipped.
 	private static Dictionary<string, string>? ReadConfig(string yaml)
 	{
@@ -215,6 +215,10 @@ internal static partial class DiagramPreprocessor
 			{
 				inConfig = key == "config" && value.Length == 0;
 				path.Clear();
+
+				// mermaid.js also reads a few settings straight from the top level (displayMode: compact).
+				if (!inConfig && key != "title" && value.Length > 0 && value[0] is not ('[' or '{' or '|' or '>'))
+					(config ??= new Dictionary<string, string>(StringComparer.Ordinal))[key] = Unquote(value);
 				continue;
 			}
 

@@ -48,6 +48,17 @@ public class MermaidParserTests
 	}
 
 	[Test]
+	public void Top_level_frontmatter_settings_join_the_config()
+	{
+		var diagram = MermaidParser.Parse("---\ntitle: Plan\ndisplayMode: compact\nconfig:\n  gantt:\n    topAxis: true\n---\ngantt\n  A : 2026-01-01, 1d");
+
+		diagram.Metadata.Title.Should().Be("Plan");
+		diagram.Metadata.Config!["displayMode"].Should().Be("compact");
+		diagram.Metadata.Config["gantt.topAxis"].Should().Be("true");
+		diagram.Metadata.Config.Should().NotContainKey("title");
+	}
+
+	[Test]
 	public void Git_graph_header_may_end_in_a_colon()
 	{
 		var diagram = MermaidParser.Parse("gitGraph:\n  commit\n  branch develop\n  commit");
