@@ -14,4 +14,7 @@ public sealed record QuadrantChart
 	public required IReadOnlyList<QuadrantPoint> Points { get; init; }
 }
 
-public sealed record QuadrantPoint(string Label, double X, double Y);
+public sealed record QuadrantPoint(string Label, double X, double Y, QuadrantPointStyle? Style = null);
+
+// A point's own styles over those of its `:::class`; every member is optional, colours and widths as written.
+public sealed record QuadrantPointStyle(string? Color = null, double? Radius = null, string? StrokeColor = null, string? StrokeWidth = null);
