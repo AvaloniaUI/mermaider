@@ -24,6 +24,15 @@ internal static partial class RequirementParser
 	[GeneratedRegex(@"^(\w+)\s*:\s*(.+)$", RegexOptions.None, TimeoutMs)]
 	private static partial Regex PropertyPattern();
 
+	[GeneratedRegex(@"^style\s+([\w,.-]+)\s+(.+)$", RegexOptions.None, TimeoutMs)]
+	private static partial Regex StylePattern();
+
+	[GeneratedRegex(@"^classDef\s+([\w-]+)\s+(.+)$", RegexOptions.None, TimeoutMs)]
+	private static partial Regex ClassDefPattern();
+
+	[GeneratedRegex(@"^class\s+([\w,.-]+)\s+([\w-]+)\s*;?$", RegexOptions.None, TimeoutMs)]
+	private static partial Regex ClassPattern();
+
 	// A - type -> B
 	[GeneratedRegex(
 		@"^(.+?)\s+-\s+(contains|copies|derives|satisfies|verifies|refines|traces)\s+->\s+(.+)$",
@@ -57,10 +66,37 @@ internal static partial class RequirementParser
 		var requirements = new List<RequirementNode>();
 		var elements = new List<RequirementElement>();
 		var relations = new List<RequirementRelation>();
+		var classDefs = new Dictionary<string, IReadOnlyDictionary<string, string>>(StringComparer.Ordinal);
+		var classAssignments = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+		var nodeStyles = new Dictionary<string, IReadOnlyDictionary<string, string>>(StringComparer.Ordinal);
 
 		for (var i = 1; i < lines.Length; i++)
 		{
 			var line = lines[i];
+
+			var styleMatch = StylePattern().Match(line);
+			if (styleMatch.Success)
+			{
+				var declarations = ParseDeclarations(styleMatch.Groups[2].Value);
+				foreach (var id in SplitNames(styleMatch.Groups[1].Value))
+					nodeStyles[id] = declarations;
+				continue;
+			}
+
+			var classDefMatch = ClassDefPattern().Match(line);
+			if (classDefMatch.Success)
+			{
+				classDefs[classDefMatch.Groups[1].Value] = ParseDeclarations(classDefMatch.Groups[2].Value);
+				continue;
+			}
+
+			var classMatch = ClassPattern().Match(line);
+			if (classMatch.Success)
+			{
+				foreach (var id in SplitNames(classMatch.Groups[1].Value))
+					AddClass(classAssignments, id, classMatch.Groups[2].Value);
+				continue;
+			}
 
 			var titleMatch = TitlePattern().Match(line);
 			if (titleMatch.Success)
@@ -80,7 +116,7 @@ internal static partial class RequirementParser
 			if (reqMatch.Success)
 			{
 				var kind = ParseKind(reqMatch.Groups[1].Value);
-				var name = Unquote(reqMatch.Groups[2].Value.Trim());
+				var name = TakeClass(reqMatch.Groups[2].Value.Trim(), classAssignments);
 				i = ParseRequirementBody(lines, i + 1, name, kind, requirements);
 				continue;
 			}
@@ -88,7 +124,7 @@ internal static partial class RequirementParser
 			var elemMatch = ElementOpenPattern().Match(line);
 			if (elemMatch.Success)
 			{
-				var name = Unquote(elemMatch.Groups[1].Value.Trim());
+				var name = TakeClass(elemMatch.Groups[1].Value.Trim(), classAssignments);
 				i = ParseElementBody(lines, i + 1, name, elements);
 				continue;
 			}
@@ -121,8 +157,49 @@ internal static partial class RequirementParser
 			Requirements = requirements,
 			Elements = elements,
 			Relations = relations,
+			ClassDefs = classDefs,
+			ClassAssignments = classAssignments.ToDictionary(p => p.Key, p => (IReadOnlyList<string>)p.Value, StringComparer.Ordinal),
+			NodeStyles = nodeStyles,
 		};
 	}
+
+	// `name:::class` declares the class with the requirement or element; the name is what remains, unquoted.
+	private static string TakeClass(string declared, Dictionary<string, List<string>> assignments)
+	{
+		var marker = declared.LastIndexOf(":::", StringComparison.Ordinal);
+		if (marker <= 0)
+			return Unquote(declared);
+
+		var name = Unquote(declared[..marker].Trim());
+		AddClass(assignments, name, declared[(marker + 3)..].Trim());
+		return name;
+	}
+
+	private static void AddClass(Dictionary<string, List<string>> assignments, string name, string className)
+	{
+		if (className.Length == 0)
+			return;
+		if (!assignments.TryGetValue(name, out var classes))
+			assignments[name] = classes = [];
+		if (!classes.Contains(className))
+			classes.Add(className);
+	}
+
+	// `fill:purple,stroke:gray, color: green` — properties without a colon are ignored.
+	private static IReadOnlyDictionary<string, string> ParseDeclarations(string text)
+	{
+		var declarations = new Dictionary<string, string>(StringComparer.Ordinal);
+		foreach (var part in text.TrimEnd(';').Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+		{
+			var colon = part.IndexOf(':');
+			if (colon > 0)
+				declarations[part[..colon].Trim()] = part[(colon + 1)..].Trim().TrimEnd(';');
+		}
+
+		return declarations;
+	}
+
+	private static string[] SplitNames(string text) => text.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
 	private static int ParseRequirementBody(
 		string[] lines, int start, string name, RequirementKind kind, List<RequirementNode> requirements)

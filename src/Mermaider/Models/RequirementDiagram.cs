@@ -8,6 +8,12 @@ public sealed record RequirementDiagram
 	public required IReadOnlyList<RequirementNode> Requirements { get; init; }
 	public required IReadOnlyList<RequirementElement> Elements { get; init; }
 	public required IReadOnlyList<RequirementRelation> Relations { get; init; }
+	/// <summary><c>classDef</c> declarations by class name.</summary>
+	public IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>> ClassDefs { get; init; } = new Dictionary<string, IReadOnlyDictionary<string, string>>();
+	/// <summary>Class names given to each requirement or element by <c>class</c> statements or <c>:::name</c>, by name.</summary>
+	public IReadOnlyDictionary<string, IReadOnlyList<string>> ClassAssignments { get; init; } = new Dictionary<string, IReadOnlyList<string>>();
+	/// <summary><c>style</c> declarations by requirement or element name.</summary>
+	public IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>> NodeStyles { get; init; } = new Dictionary<string, IReadOnlyDictionary<string, string>>();
 }
 
 public sealed record RequirementNode(

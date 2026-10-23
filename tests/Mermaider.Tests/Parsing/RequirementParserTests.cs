@@ -197,4 +197,32 @@ public class RequirementParserTests
 
 		diagram.Direction.Should().Be(Direction.TB);
 	}
+
+	[Test]
+	public void Parses_styles_classes_and_class_shorthand()
+	{
+		var diagram = RequirementParser.Parse(
+		[
+			"requirementDiagram",
+			"requirement test_req:::important {",
+			"id: 1",
+			"text: class styling example",
+			"risk: low",
+			"verifymethod: test",
+			"}",
+			"element test_entity {",
+			"type: simulation",
+			"}",
+			"classDef important font-weight:bold",
+			"classDef test fill:#ffa,stroke:#000",
+			"class test_entity important",
+			"style test_entity fill:#f9f,stroke:#333, color: blue",
+		]);
+
+		diagram.Requirements.Single().Name.Should().Be("test_req");
+		diagram.ClassAssignments["test_req"].Should().Equal("important");
+		diagram.ClassAssignments["test_entity"].Should().Equal("important");
+		diagram.ClassDefs["test"]["fill"].Should().Be("#ffa");
+		diagram.NodeStyles["test_entity"]["color"].Should().Be("blue");
+	}
 }
